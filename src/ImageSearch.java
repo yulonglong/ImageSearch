@@ -10,23 +10,73 @@ import javax.swing.*;
 /*path of the dataset, and the size of search result could be changed here*/
 
 
+class ImageFile {
+	BufferedImage bufferedImage;
+	File file;
+	String name;
+	ImageFile (File _file) {
+		file = _file;
+		try {
+			bufferedImage = ImageIO.read(file);
+			name = file.getName();
+		}
+		catch (Exception e ) {
+			System.out.println("Image File exception : " + e);
+		}
+	}
+}
+
 public class ImageSearch extends JFrame
                               implements ActionListener {
     JFileChooser fc;
 	JPanel contentPane;
 
 	int resultsize = 9;    //size of the searching result
-	String datasetpath = "D:\\GitHub\\ImageSearch\\Assignment1\\ImageData\\train\\data\\"; //the path of image dataset
+	String datasetpath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\"; //the path of image dataset
     ColorHist colorhist = new ColorHist();
     JButton openButton, searchButton;
 	BufferedImage bufferedimage;
     
 	JLabel [] imageLabels = new JLabel [ resultsize ];
 	
+	JCheckBox colorHistogramCheckBox = new JCheckBox("Color Histogram");
+	JCheckBox visualConceptCheckBox = new JCheckBox("Visual Concept");
+	JCheckBox visualKeywordCheckBox = new JCheckBox("Visual Keywords");
+	JCheckBox textCheckbox = new JCheckBox("Text");
+	
+	JProgressBar progressBar = new JProgressBar();
+	
 	File file = null;
+	ImageFile[] images;
 
 
     public ImageSearch() {
+		File dir = new File(datasetpath);  //path of the dataset
+		File [] files = dir.listFiles();
+		
+		// Initialize ProgressBar
+		contentPane = (JPanel)this.getContentPane();
+		setSize(800,900);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    	progressBar.setMinimum(0);
+    	progressBar.setMaximum(files.length);
+    	progressBar.setStringPainted(true);
+    	contentPane.add(progressBar);
+    	contentPane.setVisible(true);
+    	setVisible(true);
+		
+    	// Load Image Files
+		images = new ImageFile[files.length];
+		for (int i=0; i < files.length;i++){
+			progressBar.setValue(i);
+			double currPercentage = (double)i/(double)files.length * 100.0;
+			progressBar.setString(String.format("%.2f", currPercentage) + "%");
+			images[i] = new ImageFile(files[i]);
+		}
+		
+		contentPane.setVisible(false);
+		contentPane.remove(progressBar);
+		// End of ProgressBar
         
         openButton = new JButton("Select an image...",
                 createImageIcon("images/Open16.gif"));
@@ -40,12 +90,19 @@ public class ImageSearch extends JFrame
         buttonPanel.add(openButton);
         buttonPanel.add(searchButton);
         
-		
+        JPanel algorithmPanel = new JPanel();
+        algorithmPanel.add(colorHistogramCheckBox);
+        algorithmPanel.add(visualConceptCheckBox);
+        algorithmPanel.add(visualKeywordCheckBox);
+        algorithmPanel.add(textCheckbox);
+        
     	JPanel imagePanel = new JPanel();
         imagePanel.setLayout(new GridLayout(0,3));
         
         for (int i = 0; i<imageLabels.length;i++){
         	imageLabels[i] = new JLabel();
+        	imageLabels[i].setHorizontalTextPosition(JLabel.CENTER);
+        	imageLabels[i].setVerticalTextPosition(JLabel.BOTTOM);
         	imagePanel.add(imageLabels[i]);
         }
 
@@ -54,12 +111,12 @@ public class ImageSearch extends JFrame
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         contentPane.add(buttonPanel, BorderLayout.PAGE_START);
+        contentPane.add(algorithmPanel, BorderLayout.PAGE_END);
         contentPane.add(imagePanel, BorderLayout.CENTER);
         
         contentPane.setVisible(true);
 		setVisible(true);
-//        add(logScrollPane, BorderLayout.CENTER);
-        
+//      add(logScrollPane, BorderLayout.CENTER);
     }
 
     /** Returns an ImageIcon, or null if the path was invalid. */
@@ -111,22 +168,23 @@ public class ImageSearch extends JFrame
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-        	BufferedImage [] imgs = null;
+        	ImageFile [] imgs = null;
 			try {
-				imgs = colorhist.search (datasetpath, bufferedimage, resultsize);
+				imgs = colorhist.search (images, bufferedimage, resultsize);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
         	
-			for(int i = 0; i<imageLabels.length;i++)
-				imageLabels[i].setIcon(new ImageIcon(imgs[i]));
+			for(int i = 0; i<imageLabels.length;i++) {
+				imageLabels[i].setIcon(new ImageIcon(imgs[i].bufferedImage));
+				imageLabels[i].setText(imgs[i].name);
+			}
         	
         }
     }
 
     public static void main(String[] args) {
-    	
 		ImageSearch example = new ImageSearch();
     }
 }

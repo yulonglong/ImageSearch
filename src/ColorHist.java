@@ -9,18 +9,17 @@ public class ColorHist {
 	int dim = 64;
 
 	
-	public BufferedImage[] search(String datasetpath, BufferedImage bufferedimage, int resultsize) throws IOException{
+	public ImageFile[] search(ImageFile[] images, BufferedImage bufferedimage, int resultsize) throws IOException{
     	double[] hist = getHist(bufferedimage);
     	
-    	File dir = new File(datasetpath);  //path of the dataset
-		File [] files = dir.listFiles();
-		double[] sims = new double [files.length];
-		int [] indexes = new int [files.length];
+		double[] sims = new double [images.length];
+		int [] indexes = new int [images.length];
 		
 		
 		/*ranking the search results*/
-		for (int count=0; count < files.length;count++){
-			BufferedImage i = ImageIO.read(files[count]);
+		for (int count=0; count < images.length;count++){
+			BufferedImage i = images[count].bufferedImage;
+			
 			double[] h = getHist(i);
 			double sim = computeSimilarity (hist, h);
 			if (count == 0){
@@ -42,9 +41,9 @@ public class ColorHist {
 			}
 		}
 		    	
-    	BufferedImage[] imgs = new BufferedImage[resultsize];
+    	ImageFile[] imgs = new ImageFile[resultsize];
 		for (int i=0; i<resultsize;i++){
-			imgs [i]=ImageIO.read(files[indexes[i]]);
+			imgs[i] = images[indexes[i]];
 		}
 		
     	return imgs;
