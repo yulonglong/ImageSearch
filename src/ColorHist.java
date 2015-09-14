@@ -1,52 +1,23 @@
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
-import java.io.File;
 import java.io.IOException;
-
-import javax.imageio.ImageIO;
+import java.util.*;
 
 public class ColorHist {
 	int dim = 64;
-
 	
-	public ImageFile[] search(ImageFile[] images, BufferedImage bufferedimage, int resultsize) throws IOException{
-    	double[] hist = getHist(bufferedimage);
-    	
-		double[] sims = new double [images.length];
-		int [] indexes = new int [images.length];
-		
+	public TreeSet<ImageFile> search(TreeSet<ImageFile> images, BufferedImage bufferedimage, int resultsize) throws IOException{
+    	double[] targetHist = getHist(bufferedimage);
+    	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new TreeSetScoreComparator());
 		
 		/*ranking the search results*/
-		for (int count=0; count < images.length;count++){
-			BufferedImage i = images[count].bufferedImage;
-			
-			double[] h = getHist(i);
-			double sim = computeSimilarity (hist, h);
-			if (count == 0){
-				sims[count] = sim;
-				indexes [count] = count;
-			}
-			else {
-				int index;
-				for (index =0; index < count; index ++){
-					if (sim > sims[index])
-						break;
-				}
-				for (int j = count - 1; j > index - 1; j--){
-					sims [j+1] = sims [j];
-					indexes [j+1] = indexes[j];
-				}
-				sims[index] = sim;
-				indexes[index] = count;
-			}
+		for (ImageFile currImage: images) {
+			double[] currHist = getHist(currImage.bufferedImage);
+			currImage.score = computeSimilarity(targetHist, currHist);
+			result.add(currImage);
+			if (result.size() > resultsize) result.pollLast();
 		}
-		    	
-    	ImageFile[] imgs = new ImageFile[resultsize];
-		for (int i=0; i<resultsize;i++){
-			imgs[i] = images[indexes[i]];
-		}
-		
-    	return imgs;
+    	return result;
     }
     
     public double computeSimilarity(double [] hist1, double [] hist2) {

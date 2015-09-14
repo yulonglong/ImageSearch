@@ -4,8 +4,9 @@ import java.beans.*;
 import java.awt.*;
 import java.io.File;
 
-public class ImagePreview extends JComponent
-                          implements PropertyChangeListener {
+public class ImagePreview extends JComponent implements PropertyChangeListener {
+	static final long serialVersionUID = 41L;
+	
     ImageIcon thumbnail = null;
     File file = null;
 

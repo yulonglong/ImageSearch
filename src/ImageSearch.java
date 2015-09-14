@@ -1,5 +1,6 @@
 
 import java.io.*;
+import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -10,10 +11,13 @@ import javax.swing.*;
 /*path of the dataset, and the size of search result could be changed here*/
 
 
-class ImageFile {
+
+class ImageFile implements Comparable<ImageFile>{
 	BufferedImage bufferedImage;
 	File file;
 	String name;
+	String description;
+	double score = 0.0;
 	ImageFile (File _file) {
 		file = _file;
 		try {
@@ -24,15 +28,30 @@ class ImageFile {
 			System.out.println("Image File exception : " + e);
 		}
 	}
+	Double getScore() {
+		return score;
+	}
+	public int compareTo(ImageFile thatImage) {
+        return this.name.compareTo(thatImage.name);
+    }
 }
 
-public class ImageSearch extends JFrame
-                              implements ActionListener {
+class TreeSetScoreComparator implements Comparator<ImageFile> {
+    @Override
+    public int compare(ImageFile e1, ImageFile e2) {
+        return e2.getScore().compareTo(e1.getScore());
+    }
+}
+
+public class ImageSearch extends JFrame implements ActionListener {
+	static final long serialVersionUID = 42L;
+	
     JFileChooser fc;
 	JPanel contentPane;
 
 	int resultsize = 9;    //size of the searching result
 	String datasetpath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\"; //the path of image dataset
+	String imageListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\train\\TrainImagelist.txt";
     ColorHist colorhist = new ColorHist();
     JButton openButton, searchButton;
 	BufferedImage bufferedimage;
@@ -47,10 +66,25 @@ public class ImageSearch extends JFrame
 	JProgressBar progressBar = new JProgressBar();
 	
 	File file = null;
-	ImageFile[] images;
+	TreeSet<ImageFile> images = new TreeSet<ImageFile>();
 
 
     public ImageSearch() {
+    	// Begin Reading image file names
+    	TreeSet<String> imageName = new TreeSet<String>();
+    	try {
+        	Scanner cin = new Scanner(new File(imageListPath));
+        	while (cin.hasNext()) {
+        		imageName.add(cin.nextLine());
+        	}
+        	cin.close();
+    	}
+    	catch (Exception e) {
+    		System.out.println("Error! Failed to read ImageList : " + e);
+    	}
+    	// End Reading image file names
+    	
+    	
 		File dir = new File(datasetpath);  //path of the dataset
 		File [] files = dir.listFiles();
 		
@@ -66,18 +100,30 @@ public class ImageSearch extends JFrame
     	setVisible(true);
 		
     	// Load Image Files
-		images = new ImageFile[files.length];
 		for (int i=0; i < files.length;i++){
 			progressBar.setValue(i);
 			double currPercentage = (double)i/(double)files.length * 100.0;
 			progressBar.setString(String.format("%.2f", currPercentage) + "%");
-			images[i] = new ImageFile(files[i]);
+			ImageFile currImage = new ImageFile(files[i]);
+			images.add(currImage);
+			imageName.remove(currImage.name); // Remove the image filename from the list
+		}
+		
+		// If it is not empty, there are missing images
+		if (!imageName.isEmpty()) {
+			System.err.println("Error! Not all training images are read!");
+			for (String temp: imageName) {
+				System.out.println(temp);
+			}
 		}
 		
 		contentPane.setVisible(false);
 		contentPane.remove(progressBar);
 		// End of ProgressBar
         
+		
+		
+		// Main UI
         openButton = new JButton("Select an image...",
                 createImageIcon("images/Open16.gif"));
         openButton.addActionListener(this);
@@ -168,23 +214,25 @@ public class ImageSearch extends JFrame
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-        	ImageFile [] imgs = null;
+        	TreeSet<ImageFile> result = null;
 			try {
-				imgs = colorhist.search (images, bufferedimage, resultsize);
+				result = colorhist.search (images, bufferedimage, resultsize);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
         	
-			for(int i = 0; i<imageLabels.length;i++) {
-				imageLabels[i].setIcon(new ImageIcon(imgs[i].bufferedImage));
-				imageLabels[i].setText(imgs[i].name);
+			int imageLabelsIndex = 0;
+			for(ImageFile currResult : result) {
+				imageLabels[imageLabelsIndex].setIcon(new ImageIcon(currResult.bufferedImage));
+				imageLabels[imageLabelsIndex].setText(currResult.name);
+				imageLabelsIndex++;
 			}
-        	
         }
     }
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
+	    @SuppressWarnings("unused")
 		ImageSearch example = new ImageSearch();
     }
 }
