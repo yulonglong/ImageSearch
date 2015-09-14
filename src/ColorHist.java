@@ -6,14 +6,15 @@ import java.util.*;
 public class ColorHist {
 	int dim = 64;
 	
-	public TreeSet<ImageFile> search(TreeSet<ImageFile> images, BufferedImage bufferedimage, int resultsize) throws IOException{
+	public TreeSet<ImageFile> search(TreeMap<String, ImageFile> images, BufferedImage bufferedimage, int resultsize) throws IOException{
     	double[] targetHist = getHist(bufferedimage);
-    	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new TreeSetScoreComparator());
+    	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
 		
 		/*ranking the search results*/
-		for (ImageFile currImage: images) {
-			double[] currHist = getHist(currImage.bufferedImage);
-			currImage.score = computeSimilarity(targetHist, currHist);
+    	for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
+            ImageFile currImage = entry.getValue();
+			double[] currHist = getHist(currImage.m_bufferedImage);
+			currImage.m_score = computeSimilarity(targetHist, currHist);
 			result.add(currImage);
 			if (result.size() > resultsize) result.pollLast();
 		}

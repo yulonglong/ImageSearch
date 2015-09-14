@@ -13,30 +13,29 @@ import javax.swing.*;
 
 
 class ImageFile implements Comparable<ImageFile>{
-	BufferedImage bufferedImage;
-	File file;
-	String name;
-	String description;
-	double score = 0.0;
+	BufferedImage m_bufferedImage;
+	String m_name;
+	String m_description;
+	double m_score = 0.0;
+	TreeSet<Integer> m_category = new TreeSet<Integer>();
 	ImageFile (File _file) {
-		file = _file;
 		try {
-			bufferedImage = ImageIO.read(file);
-			name = file.getName();
+			m_bufferedImage = ImageIO.read(_file);
+			m_name = _file.getName();
 		}
 		catch (Exception e ) {
 			System.out.println("Image File exception : " + e);
 		}
 	}
 	Double getScore() {
-		return score;
+		return m_score;
 	}
 	public int compareTo(ImageFile thatImage) {
-        return this.name.compareTo(thatImage.name);
+        return this.m_name.compareTo(thatImage.m_name);
     }
 }
 
-class TreeSetScoreComparator implements Comparator<ImageFile> {
+class ImageFileScoreComparator implements Comparator<ImageFile> {
     @Override
     public int compare(ImageFile e1, ImageFile e2) {
         return e2.getScore().compareTo(e1.getScore());
@@ -46,34 +45,39 @@ class TreeSetScoreComparator implements Comparator<ImageFile> {
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
 	
-    JFileChooser fc;
-	JPanel contentPane;
+    JFileChooser m_fc;
+	JPanel m_contentPane;
 
-	int resultsize = 9;    //size of the searching result
-	String datasetpath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\"; //the path of image dataset
-	String imageListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\train\\TrainImagelist.txt";
-    ColorHist colorhist = new ColorHist();
-    JButton openButton, searchButton;
-	BufferedImage bufferedimage;
+	File m_targetFile;
+	int m_resultSize = 9;    //size of the searching result
+	String m_imageDataPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\"; //the path of image dataset
+	String m_imageListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\train\\TrainImagelist.txt";
+	String m_imageDescriptionPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\train_tags.txt";
+	String m_imageCategoryPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\category_names.txt";
+	String m_groundTruthPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\Groundtruth\\train\\";
+	
+    ColorHist m_colorHist = new ColorHist();
+    JButton m_openButton, m_searchButton;
     
-	JLabel [] imageLabels = new JLabel [ resultsize ];
+	JLabel [] m_imageLabels = new JLabel [ m_resultSize ];
 	
-	JCheckBox colorHistogramCheckBox = new JCheckBox("Color Histogram");
-	JCheckBox visualConceptCheckBox = new JCheckBox("Visual Concept");
-	JCheckBox visualKeywordCheckBox = new JCheckBox("Visual Keywords");
-	JCheckBox textCheckbox = new JCheckBox("Text");
+	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
+	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
+	JCheckBox m_visualKeywordCheckBox = new JCheckBox("Visual Keywords");
+	JCheckBox m_textCheckbox = new JCheckBox("Text");
 	
-	JProgressBar progressBar = new JProgressBar();
+	JProgressBar m_progressBar = new JProgressBar();
 	
-	File file = null;
-	TreeSet<ImageFile> images = new TreeSet<ImageFile>();
-
+	TreeMap<String, Integer> m_categoryMap = new TreeMap<String, Integer>();
+	TreeMap<Integer, String> m_invCategoryMap = new TreeMap<Integer, String>();
+	TreeMap<String, ImageFile> m_imageMap = new TreeMap<String, ImageFile>();
 
     public ImageSearch() {
+    	
     	// Begin Reading image file names
     	TreeSet<String> imageName = new TreeSet<String>();
     	try {
-        	Scanner cin = new Scanner(new File(imageListPath));
+        	Scanner cin = new Scanner(new File(m_imageListPath));
         	while (cin.hasNext()) {
         		imageName.add(cin.nextLine());
         	}
@@ -85,31 +89,31 @@ public class ImageSearch extends JFrame implements ActionListener {
     	// End Reading image file names
     	
     	
-		File dir = new File(datasetpath);  //path of the dataset
+		File dir = new File(m_imageDataPath);  //path of the dataset
 		File [] files = dir.listFiles();
 		
 		// Initialize ProgressBar
-		contentPane = (JPanel)this.getContentPane();
+		m_contentPane = (JPanel)this.getContentPane();
 		setSize(800,900);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    	progressBar.setMinimum(0);
-    	progressBar.setMaximum(files.length);
-    	progressBar.setStringPainted(true);
-    	contentPane.add(progressBar);
-    	contentPane.setVisible(true);
+    	m_progressBar.setMinimum(0);
+    	m_progressBar.setMaximum(files.length);
+    	m_progressBar.setStringPainted(true);
+    	m_contentPane.add(m_progressBar);
+    	m_contentPane.setVisible(true);
     	setVisible(true);
 		
     	// Load Image Files
 		for (int i=0; i < files.length;i++){
-			progressBar.setValue(i);
+			m_progressBar.setValue(i);
 			double currPercentage = (double)i/(double)files.length * 100.0;
-			progressBar.setString(String.format("%.2f", currPercentage) + "%");
+			m_progressBar.setString(String.format("%.2f", currPercentage) + "%");
 			ImageFile currImage = new ImageFile(files[i]);
-			images.add(currImage);
-			imageName.remove(currImage.name); // Remove the image filename from the list
+			m_imageMap.put(currImage.m_name,currImage);
+			imageName.remove(currImage.m_name); // Remove the image filem_name from the list
 		}
 		
-		// If it is not empty, there are missing images
+		// If it is not empty, there are missing m_imageMap
 		if (!imageName.isEmpty()) {
 			System.err.println("Error! Not all training images are read!");
 			for (String temp: imageName) {
@@ -117,50 +121,92 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 		}
 		
-		contentPane.setVisible(false);
-		contentPane.remove(progressBar);
+		// Begin Reading image m_description texts
+    	try {
+        	Scanner cin = new Scanner(new File(m_imageDescriptionPath));
+        	while (cin.hasNext()) {
+        		String imageFileName = cin.next();
+        		String text = cin.nextLine();
+        		ImageFile currImage = m_imageMap.get(imageFileName);
+        		currImage.m_description = text.trim();
+        	}
+        	cin.close();
+    	}
+    	catch (Exception e) {
+    		System.out.println("Error! Failed to read ImageDescription : " + e);
+    	}
+    	// End Reading image m_description texts
+    	
+    	// Begin Reading Image Category
+    	try {
+        	Scanner cin = new Scanner(new File(m_imageCategoryPath));
+        	while (cin.hasNext()) {
+        		String categoryName = cin.next();
+        		int index = m_categoryMap.size();
+        		m_categoryMap.put(categoryName, index);
+        		m_invCategoryMap.put(index, categoryName);
+        		
+        		Scanner groundTruthCin = new Scanner (new File(m_groundTruthPath + "Labels_" + categoryName + ".txt"));
+        		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+        			if (!groundTruthCin.hasNext()) break;
+        			int valid = groundTruthCin.nextInt();
+        			if (valid == 1) {
+            			ImageFile currImage = entry.getValue();
+            			currImage.m_category.add(index);
+        			}
+        		}
+        		groundTruthCin.close();
+        	}
+        	cin.close();
+    	}
+    	catch (Exception e) {
+    		System.out.println("Error! Failed to read CategoryName : " + e);
+    	}
+    	// End Reading Image Category
+		
+		m_contentPane.setVisible(false);
+		m_contentPane.remove(m_progressBar);
 		// End of ProgressBar
         
 		
-		
 		// Main UI
-        openButton = new JButton("Select an image...",
+        m_openButton = new JButton("Select an image...",
                 createImageIcon("images/Open16.gif"));
-        openButton.addActionListener(this);
+        m_openButton.addActionListener(this);
         
-        searchButton = new JButton("Search");
-        searchButton.addActionListener(this);
+        m_searchButton = new JButton("Search");
+        m_searchButton.addActionListener(this);
 
         //For layout purposes, put the buttons in a separate panel
         JPanel buttonPanel = new JPanel(); //use FlowLayout
-        buttonPanel.add(openButton);
-        buttonPanel.add(searchButton);
+        buttonPanel.add(m_openButton);
+        buttonPanel.add(m_searchButton);
         
         JPanel algorithmPanel = new JPanel();
-        algorithmPanel.add(colorHistogramCheckBox);
-        algorithmPanel.add(visualConceptCheckBox);
-        algorithmPanel.add(visualKeywordCheckBox);
-        algorithmPanel.add(textCheckbox);
+        algorithmPanel.add(m_colorHistogramCheckBox);
+        algorithmPanel.add(m_visualConceptCheckBox);
+        algorithmPanel.add(m_visualKeywordCheckBox);
+        algorithmPanel.add(m_textCheckbox);
         
     	JPanel imagePanel = new JPanel();
         imagePanel.setLayout(new GridLayout(0,3));
         
-        for (int i = 0; i<imageLabels.length;i++){
-        	imageLabels[i] = new JLabel();
-        	imageLabels[i].setHorizontalTextPosition(JLabel.CENTER);
-        	imageLabels[i].setVerticalTextPosition(JLabel.BOTTOM);
-        	imagePanel.add(imageLabels[i]);
+        for (int i = 0; i<m_imageLabels.length;i++){
+        	m_imageLabels[i] = new JLabel();
+        	m_imageLabels[i].setHorizontalTextPosition(JLabel.CENTER);
+        	m_imageLabels[i].setVerticalTextPosition(JLabel.BOTTOM);
+        	imagePanel.add(m_imageLabels[i]);
         }
 
-		contentPane = (JPanel)this.getContentPane();
+		m_contentPane = (JPanel)this.getContentPane();
 		setSize(800,900);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        contentPane.add(buttonPanel, BorderLayout.PAGE_START);
-        contentPane.add(algorithmPanel, BorderLayout.PAGE_END);
-        contentPane.add(imagePanel, BorderLayout.CENTER);
+        m_contentPane.add(buttonPanel, BorderLayout.PAGE_START);
+        m_contentPane.add(algorithmPanel, BorderLayout.PAGE_END);
+        m_contentPane.add(imagePanel, BorderLayout.CENTER);
         
-        contentPane.setVisible(true);
+        m_contentPane.setVisible(true);
 		setVisible(true);
 //      add(logScrollPane, BorderLayout.CENTER);
     }
@@ -178,55 +224,53 @@ public class ImageSearch extends JFrame implements ActionListener {
     
     public void actionPerformed(ActionEvent e) {
         //Set up the file chooser.
-        if (e.getSource() == openButton) {
-        if (fc == null) {
-            fc = new JFileChooser();
-
-	    //Add a custom file filter and disable the default
-	    //(Accept All) file filter.
-            fc.addChoosableFileFilter(new ImageFilter());
-            fc.setAcceptAllFileFilterUsed(false);
-
-	    //Add custom icons for file types.
-            fc.setFileView(new ImageFileView());
-
-	    //Add the preview pane.
-            fc.setAccessory(new ImagePreview(fc));
-        } 
-        
-
-        //Show it.
-        int returnVal = fc.showDialog(ImageSearch.this,
-                                      "Select an image..");
-
-        //Process the results.
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            file = fc.getSelectedFile();
-
+        if (e.getSource() == m_openButton) {
+	        if (m_fc == null) {
+	            m_fc = new JFileChooser();
+	
+	            //Add a custom file filter and disable the default
+	            //(Accept All) file filter.
+	            m_fc.addChoosableFileFilter(new ImageFilter());
+	            m_fc.setAcceptAllFileFilterUsed(false);
+	
+	            //Add custom icons for file types.
+	            m_fc.setFileView(new ImageFileView());
+	
+	            //Add the preview pane.
+	            m_fc.setAccessory(new ImagePreview(m_fc));
+	        } 
+	        
+	        //Show it.
+	        int returnVal = m_fc.showDialog(ImageSearch.this, "Select an image..");
+	
+	        //Process the results.
+	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            m_targetFile = m_fc.getSelectedFile();
+	        }
+	
+	        m_fc.setSelectedFile(null);
         }
-
-        fc.setSelectedFile(null);
-        }else if (e.getSource() == searchButton) {
-        	
+        else if (e.getSource() == m_searchButton) {
+        	BufferedImage targetImage = null;
         	try {
-				bufferedimage = ImageIO.read(file);
+        		targetImage = ImageIO.read(m_targetFile);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
         	TreeSet<ImageFile> result = null;
 			try {
-				result = colorhist.search (images, bufferedimage, resultsize);
+				result = m_colorHist.search (m_imageMap, targetImage, m_resultSize);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
         	
-			int imageLabelsIndex = 0;
+			int m_imageLabelsIndex = 0;
 			for(ImageFile currResult : result) {
-				imageLabels[imageLabelsIndex].setIcon(new ImageIcon(currResult.bufferedImage));
-				imageLabels[imageLabelsIndex].setText(currResult.name);
-				imageLabelsIndex++;
+				m_imageLabels[m_imageLabelsIndex].setIcon(new ImageIcon(currResult.m_bufferedImage));
+				m_imageLabels[m_imageLabelsIndex].setText(m_invCategoryMap.get(currResult.m_category.first()) + " - " + currResult.m_name + " - " + currResult.m_description);
+				m_imageLabelsIndex++;
 			}
         }
     }
