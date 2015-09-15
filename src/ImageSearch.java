@@ -166,7 +166,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 		}
 		
-		// Begin Reading image m_description texts
+		// Begin Reading image description texts
     	try {
         	Scanner cin = new Scanner(new File(m_imageDescriptionPath));
         	while (cin.hasNext()) {
@@ -180,7 +180,7 @@ public class ImageSearch extends JFrame implements ActionListener {
     	catch (Exception e) {
     		System.out.println("Error! Failed to read ImageDescription : " + e);
     	}
-    	// End Reading image m_description texts
+    	// End Reading image description texts
     	
     	// Begin Reading Image Category
     	try {
@@ -225,7 +225,7 @@ public class ImageSearch extends JFrame implements ActionListener {
         	cin.close();
     	}
     	catch (Exception e) {
-    		System.out.println("Error! Failed to read ImageList : " + e);
+    		System.out.println("Error! Failed to read Test ImageList : " + e);
     	}
     	// End Reading image file names
     	
@@ -254,7 +254,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		
 		// If it is not empty, there are missing m_imageMap
 		if (!imageName.isEmpty()) {
-			System.err.println("Error! Not all training images are read!");
+			System.err.println("Error! Not all test images are read!");
 			for (String temp: imageName) {
 				System.out.println(temp);
 			}
@@ -266,13 +266,13 @@ public class ImageSearch extends JFrame implements ActionListener {
         	while (cin.hasNext()) {
         		String imageFileName = cin.next();
         		String text = cin.nextLine();
-        		ImageFile currImage = m_imageMap.get(imageFileName);
+        		ImageFile currImage = m_imageTestMap.get(imageFileName);
         		currImage.m_description = text.trim();
         	}
         	cin.close();
     	}
     	catch (Exception e) {
-    		System.out.println("Error! Failed to read ImageDescription : " + e);
+    		System.out.println("Error! Failed to read Test ImageDescription : " + e);
     	}
     	// End Reading image m_description texts
     	
@@ -297,7 +297,7 @@ public class ImageSearch extends JFrame implements ActionListener {
         	cin.close();
     	}
     	catch (Exception e) {
-    		System.out.println("Error! Failed to read CategoryName : " + e);
+    		System.out.println("Error! Failed to read Test CategoryName : " + e);
     	}
     	// End Reading Image Category
 		
@@ -413,12 +413,8 @@ public class ImageSearch extends JFrame implements ActionListener {
         }
         else if (e.getSource() == m_searchButton) {
         	TreeSet<ImageFile> result = null;
-			try {
-				ColorHist.search (m_imageMap, m_queryImageFile, m_resultSize);
-				result = getRank();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
+        	result = getRank(m_queryImageFile);
+	
         	
 			int m_imageLabelsIndex = 0;
 			for(ImageFile currResult : result) {
@@ -428,17 +424,12 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
         }
         else if (e.getSource() == m_testButton) {
+			int[] globalMatrix = new int[4];
         	for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
     			ImageFile currImageTest = entry.getValue();
-    			
     			TreeSet<ImageFile> result = null;
-    			try {
-    				ColorHist.search (m_imageMap, currImageTest, m_resultSize);
-    				result = getRank();
-    			} catch (IOException e1) {
-    				e1.printStackTrace();
-    			}
-    			int[] globalMatrix = new int[4];
+    			result = getRank(currImageTest);
+    			
     			
     			for(ImageFile currResult: result) {
     				int[] matrix = new int[4];
@@ -447,17 +438,17 @@ public class ImageSearch extends JFrame implements ActionListener {
     				globalMatrix[1] += matrix[1];
     				globalMatrix[2] += matrix[2];
     				globalMatrix[3] += matrix[3];
-    			}
-    			
-				System.out.println(currImageTest.m_name);
-				System.out.println(ImageFile.getRecall(globalMatrix) + " - " + ImageFile.getPrecision(globalMatrix) + " - " + ImageFile.getF1Score(globalMatrix));
-				System.out.println();
-    			
+    			}	
         	}
+			System.out.println(ImageFile.getRecall(globalMatrix) + " - " + ImageFile.getPrecision(globalMatrix) + " - " + ImageFile.getF1Score(globalMatrix));
+			System.out.println();
+			
         }
     }
     
-    public TreeSet<ImageFile> getRank() {
+    public TreeSet<ImageFile> getRank(ImageFile queryImage) {
+	    ColorHist.search(m_imageMap, queryImage);
+
     	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
     	/*ranking the search results*/
     	for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {

@@ -1,14 +1,12 @@
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
-import java.io.IOException;
 import java.util.*;
 
 public class ColorHist {
 	private static int dim = 64;
 	
-	public static void search(TreeMap<String, ImageFile> images, ImageFile queryImage, int resultsize) throws IOException{
+	public static void search(TreeMap<String, ImageFile> images, ImageFile queryImage) {
     	double[] targetHist = queryImage.m_colorHistogram;
-    	
 		/*ranking the search results*/
     	for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
             ImageFile currImage = entry.getValue();
