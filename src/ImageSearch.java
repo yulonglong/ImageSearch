@@ -75,7 +75,11 @@ class ImageFile implements Comparable<ImageFile>{
 class ImageFileScoreComparator implements Comparator<ImageFile> {
     @Override
     public int compare(ImageFile e1, ImageFile e2) {
-        return e2.getScore().compareTo(e1.getScore());
+        int currCompare = e2.getScore().compareTo(e1.getScore());
+        if (currCompare == 0) {
+        	return e1.m_name.compareTo(e2.m_name);
+        }
+        return currCompare;
     }
 }
 
@@ -447,7 +451,14 @@ public class ImageSearch extends JFrame implements ActionListener {
     }
     
     public TreeSet<ImageFile> getRank(ImageFile queryImage) {
-	    ColorHist.search(m_imageMap, queryImage);
+    	// Reset all scores
+    	for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+            ImageFile currImage = entry.getValue();
+            currImage.m_score = 0.0;
+		}
+    	
+    	if (m_colorHistogramCheckBox.isSelected())
+    		ColorHist.search(m_imageMap, queryImage);
 
     	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
     	/*ranking the search results*/
