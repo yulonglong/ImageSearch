@@ -431,22 +431,36 @@ public class ImageSearch extends JFrame implements ActionListener {
 			int[] globalMatrix = new int[4];
         	for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
     			ImageFile currImageTest = entry.getValue();
-    			TreeSet<ImageFile> result = null;
-    			result = getRank(currImageTest);
+    			TreeSet<ImageFile> result = getRank(currImageTest);
     			
-    			
+    			int[] localMatrix = new int[4];
     			for(ImageFile currResult: result) {
     				int[] matrix = new int[4];
     				currResult.getConfusionMatrix(currImageTest, matrix);
-    				globalMatrix[0] += matrix[0];
-    				globalMatrix[1] += matrix[1];
-    				globalMatrix[2] += matrix[2];
-    				globalMatrix[3] += matrix[3];
-    			}	
+    				localMatrix[0] += matrix[0];
+    				localMatrix[1] += matrix[1];
+    				localMatrix[2] += matrix[2];
+    				localMatrix[3] += matrix[3];
+    			}
+    			
+    			System.out.println(currImageTest.m_name);
+    			System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix + " -- FP = " + localMatrix[2] + " -- FN = " + localMatrix[3]);
+    			System.out.println("Recall    : " + ImageFile.getRecall(localMatrix));
+    			System.out.println("Precision : " + ImageFile.getPrecision(localMatrix));
+    			System.out.println("F1-Score  : " + ImageFile.getF1Score(localMatrix));
+    			System.out.println();
+    			
+    			globalMatrix[0] += localMatrix[0];
+    			globalMatrix[1] += localMatrix[1];
+    			globalMatrix[2] += localMatrix[2];
+    			globalMatrix[3] += localMatrix[3];
         	}
-			System.out.println(ImageFile.getRecall(globalMatrix) + " - " + ImageFile.getPrecision(globalMatrix) + " - " + ImageFile.getF1Score(globalMatrix));
-			System.out.println();
-			
+        	System.out.println("Final Result");
+        	System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix + " -- FP = " + globalMatrix[2] + " -- FN = " + globalMatrix[3]);
+        	System.out.println("Recall    : " + ImageFile.getRecall(globalMatrix));
+			System.out.println("Precision : " + ImageFile.getPrecision(globalMatrix));
+			System.out.println("F1-Score  : " + ImageFile.getF1Score(globalMatrix));
+			System.out.println();System.out.println();
         }
     }
     
