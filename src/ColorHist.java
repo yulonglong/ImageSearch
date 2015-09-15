@@ -4,30 +4,27 @@ import java.io.IOException;
 import java.util.*;
 
 public class ColorHist {
-	int dim = 64;
+	private static int dim = 64;
 	
-	public TreeSet<ImageFile> search(TreeMap<String, ImageFile> images, BufferedImage bufferedimage, int resultsize) throws IOException{
-    	double[] targetHist = getHist(bufferedimage);
-    	TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
-		
+	public static void search(TreeMap<String, ImageFile> images, ImageFile queryImage, int resultsize) throws IOException{
+    	double[] targetHist = queryImage.m_colorHistogram;
+    	
 		/*ranking the search results*/
     	for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
             ImageFile currImage = entry.getValue();
-			double[] currHist = getHist(currImage.m_bufferedImage);
+			double[] currHist = currImage.m_colorHistogram;
 			currImage.m_score = computeSimilarity(targetHist, currHist);
-			result.add(currImage);
-			if (result.size() > resultsize) result.pollLast();
 		}
-    	return result;
+    	return;
     }
     
-    public double computeSimilarity(double [] hist1, double [] hist2) {
+    public static double computeSimilarity(double [] hist1, double [] hist2) {
 		
 		double distance = calculateDistance(hist1, hist2);
 		return 1-distance;
 	}
 	
-	public double[] getHist(BufferedImage image) {
+	public static double[] getHist(BufferedImage image) {
 		int imHeight = image.getHeight();
         int imWidth = image.getWidth();
         double[] bins = new double[dim*dim*dim];
@@ -64,7 +61,7 @@ public class ColorHist {
         return bins;
 	}
 	
-	public double calculateDistance(double[] array1, double[] array2)
+	public static double calculateDistance(double[] array1, double[] array2)
     {
 		// Euclidean distance
         /*double Sum = 0.0;
