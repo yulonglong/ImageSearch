@@ -52,6 +52,15 @@ public class ImageFile implements Comparable<ImageFile> {
 	Double getScore() {
 		return m_score;
 	}
+	
+	public void updateDescription(String description) {
+		m_description.clear();
+		Scanner innercin = new Scanner(description);
+		while (innercin.hasNext()) {
+			m_description.add(innercin.next().trim().toLowerCase());
+		}
+		innercin.close();
+	}
 
 	public int compareTo(ImageFile thatImage) {
 		return this.m_name.compareTo(thatImage.m_name);

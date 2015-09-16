@@ -44,6 +44,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 	JLabel[] m_imageLabels = new JLabel[m_resultSize];
 	JLabel m_queryImageLabel = new JLabel();
+	JTextField m_queryDescription = new JTextField(20);
 
 	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
 	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
@@ -276,8 +277,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 				String categoryName = entryCategory.getKey();
 				int index = entryCategory.getValue();
 
-				Scanner groundTruthCin = new Scanner(
-						new File(m_testGroundTruthPath + "Labels_" + categoryName + ".txt"));
+				Scanner groundTruthCin = new Scanner(new File(m_testGroundTruthPath + "Labels_" + categoryName + ".txt"));
 				for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
 					if (!groundTruthCin.hasNext())
 						break;
@@ -331,6 +331,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		JPanel queryImagePanel = new JPanel();
 		queryImagePanel.add(m_queryImageLabel);
+		queryImagePanel.add(m_queryDescription);
 
 		JPanel imagePanel = new JPanel();
 		imagePanel.setLayout(new GridLayout(4, 5));
@@ -416,8 +417,8 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 			m_fc.setSelectedFile(null);
 		} else if (e.getSource() == m_searchButton) {
-			TreeSet<ImageFile> result = null;
-			result = getRank(m_queryImageFile);
+			m_queryImageFile.updateDescription(m_queryDescription.getText());
+			TreeSet<ImageFile> result = getRank(m_queryImageFile);
 
 			int m_imageLabelsIndex = 0;
 			for (ImageFile currResult : result) {
