@@ -11,7 +11,7 @@ public class ColorHist {
 		for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
 			ImageFile currImage = entry.getValue();
 			double[] currHist = currImage.m_colorHistogram;
-			currImage.m_score += computeSimilarity(targetHist, currHist);
+			currImage.m_colorHistScore += computeSimilarity(targetHist, currHist);
 		}
 		return;
 	}

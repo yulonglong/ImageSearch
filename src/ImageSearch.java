@@ -8,137 +8,9 @@ import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
-class ImageFile implements Comparable<ImageFile> {
-	final static int totalCategoryNum = 25;
-	BufferedImage m_bufferedImage;
-	String m_name;
-	String m_description;
-	double m_score = 0.0;
-	double[] m_colorHistogram;
-	TreeSet<Integer> m_category = new TreeSet<Integer>();
-	double[] m_semanticFeatures = new double[totalCategoryNum];
-	
-	TreeMap<Integer, ArrayList<Integer> > m_semanticFeatureMap;
-
-	ImageFile(File _file) {
-		try {
-			m_bufferedImage = ImageIO.read(_file);
-			m_name = _file.getName();
-			m_colorHistogram = ColorHist.getHist(m_bufferedImage);
-		} catch (Exception e) {
-			System.out.println("Image File exception : " + e);
-		}
-	}
-
-	ImageFile(File _file, File semanticFeatureFile, TreeMap<Integer, ArrayList<Integer> > _semanticFeatureMap) {
-		try {
-			m_bufferedImage = ImageIO.read(_file);
-			m_name = _file.getName();
-			m_colorHistogram = ColorHist.getHist(m_bufferedImage);
-			m_semanticFeatureMap = _semanticFeatureMap;
-		} catch (Exception e) {
-			System.out.println("Image File exception : " + e);
-		}
-		
-		TreeMap<Double,Integer> semanticScore = new TreeMap<Double,Integer>(new DoubleDescendingComparator());
-		int index = 0;
-		try {
-			Scanner cin = new Scanner(semanticFeatureFile);
-			while (cin.hasNext()) {
-				double currScore = cin.nextDouble();
-				semanticScore.put(currScore, index);
-				index++;
-			}
-			cin.close();
-		}
-		catch(Exception e) {
-			System.out.println(e);
-		}
-		
-		int topN = 5;
-		for (Map.Entry<Double, Integer> entry : semanticScore.entrySet()) {
-			Double currScore = entry.getKey()/7.0;
-			Integer currIndex = entry.getValue();
-			if (currScore < 0.0) break;
-			if (topN == 0) break;
-			
-			ArrayList<Integer> categoryList = m_semanticFeatureMap.get(currIndex);
-			for(Integer categoryIndex: categoryList) {
-				m_semanticFeatures[categoryIndex] += currScore;
-				if (m_semanticFeatures[categoryIndex] > 1.0) m_semanticFeatures[categoryIndex] = 1.0;
-			}
-			topN--;
-		}
-	}
-
-	Double getScore() {
-		return m_score;
-	}
-
-	public int compareTo(ImageFile thatImage) {
-		return this.m_name.compareTo(thatImage.m_name);
-	}
-
-	// matrix sequence tp,tn,fp,fn
-	public void getConfusionMatrix(ImageFile queryFile, int[] matrix) {
-		int tp = 0;
-		for (Integer thisCat : m_category) {
-			if (queryFile.m_category.contains(thisCat)) {
-				tp++;
-			}
-		}
-		int fn = queryFile.m_category.size() - tp;
-		int fp = m_category.size() - tp;
-		int tn = (totalCategoryNum - tp - fp) - fn;
-		matrix[0] = tp;
-		matrix[1] = tn;
-		matrix[2] = fp;
-		matrix[3] = fn;
-	}
-
-	public static double getPrecision(int[] matrix) {
-		int tp = matrix[0];
-		int fp = matrix[2];
-		double ans = (double) tp / ((double) tp + (double) fp);
-		return ans;
-	}
-
-	public static double getRecall(int[] matrix) {
-		int tp = matrix[0];
-		int fn = matrix[3];
-		double ans = (double) tp / ((double) tp + (double) fn);
-		return ans;
-	}
-
-	public static double getF1Score(int[] matrix) {
-		int tp = matrix[0];
-		int fp = matrix[2];
-		int fn = matrix[3];
-		double ans = 2.0 * (double) tp / (2.0 * (double) tp + (double) fp + (double) fn);
-		return ans;
-	}
-}
-
-class DoubleDescendingComparator implements Comparator<Double> {
-	@Override
-	public int compare(Double e1, Double e2) {
-		return e2.compareTo(e1);
-	}
-}
-
-class ImageFileScoreComparator implements Comparator<ImageFile> {
-	@Override
-	public int compare(ImageFile e1, ImageFile e2) {
-		int currCompare = e2.getScore().compareTo(e1.getScore());
-		if (currCompare == 0) {
-			return e1.m_name.compareTo(e2.m_name);
-		}
-		return currCompare;
-	}
-}
-
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
+	final static int s_totalCategoryNum = 25;
 
 	JFileChooser m_fc;
 	JPanel m_contentPane;
@@ -183,7 +55,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	TreeMap<Integer, String> m_invCategoryMap = new TreeMap<Integer, String>();
 	TreeMap<String, ImageFile> m_imageMap = new TreeMap<String, ImageFile>();
 	TreeMap<String, ImageFile> m_imageTestMap = new TreeMap<String, ImageFile>();
-	TreeMap<Integer, ArrayList<Integer> > m_semanticFeatureMap = new TreeMap<Integer, ArrayList<Integer> >();
+	static TreeMap<Integer, ArrayList<Integer> > s_semanticFeatureMap = new TreeMap<Integer, ArrayList<Integer> >();
 
 	private void loadTrainingData() {
 		// Begin Reading Image Category
@@ -209,11 +81,11 @@ public class ImageSearch extends JFrame implements ActionListener {
 			while (cin.hasNext()) {
 				String line = cin.nextLine();
 				String[] splitStr = line.split(",");
-				m_semanticFeatureMap.put(index, new ArrayList<Integer>());
+				s_semanticFeatureMap.put(index, new ArrayList<Integer>());
 				for(int i=0;i<3;i++){
 					Integer indexMapping = m_categoryMap.get(splitStr[i]);
 					if (m_categoryMap.get(splitStr[i]) != null) {
-						m_semanticFeatureMap.get(index).add(indexMapping);
+						s_semanticFeatureMap.get(index).add(indexMapping);
 					}
 				}
 				index++;
@@ -262,7 +134,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 			File semanticFile = new File(m_imageSemanticFeaturePath + semanticFilename + ".txt");
 
-			ImageFile currImage = new ImageFile(files[i], semanticFile, m_semanticFeatureMap);
+			ImageFile currImage = new ImageFile(files[i], semanticFile);
 			m_imageMap.put(currImage.m_name, currImage);
 			imageName.remove(currImage.m_name); // Remove the image filem_name
 												// from the list
@@ -357,7 +229,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 			File semanticFile = new File(m_imageTestSemanticFeaturePath + semanticFilename + ".txt");
 
-			ImageFile currImage = new ImageFile(files[i], semanticFile, m_semanticFeatureMap);
+			ImageFile currImage = new ImageFile(files[i], semanticFile);
 			m_imageTestMap.put(currImage.m_name, currImage);
 			imageName.remove(currImage.m_name); // Remove the image filem_name
 												// from the list
@@ -519,7 +391,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 					writer.close();
 
 					String[] command = { "CMD", "/C", m_semanticFeatureExecutableName, semanticArgsFile.toString() };
-					runExecutable(command);
+					GlobalHelper.runExecutable(command, new File(m_semanticFeaturePath));
 
 					String querySemanticFilename = m_queryFile.toString();
 					int pos = querySemanticFilename.lastIndexOf(".");
@@ -528,7 +400,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 					}
 					File querySemanticFile = new File(querySemanticFilename);
 
-					m_queryImageFile = new ImageFile(m_queryFile, querySemanticFile, m_semanticFeatureMap);
+					m_queryImageFile = new ImageFile(m_queryFile, querySemanticFile);
 					m_queryImage = ImageIO.read(m_queryFile);
 
 					m_queryImageLabel.setIcon(new ImageIcon(m_queryImage));
@@ -569,11 +441,11 @@ public class ImageSearch extends JFrame implements ActionListener {
 				}
 
 				System.out.println(currImageTest.m_name);
-				System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix + " -- FP = " + localMatrix[2]
+				System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix[1] + " -- FP = " + localMatrix[2]
 						+ " -- FN = " + localMatrix[3]);
-				System.out.println("Recall    : " + ImageFile.getRecall(localMatrix));
-				System.out.println("Precision : " + ImageFile.getPrecision(localMatrix));
-				System.out.println("F1-Score  : " + ImageFile.getF1Score(localMatrix));
+				System.out.println("Recall    : " + GlobalHelper.getRecall(localMatrix));
+				System.out.println("Precision : " + GlobalHelper.getPrecision(localMatrix));
+				System.out.println("F1-Score  : " + GlobalHelper.getF1Score(localMatrix));
 				System.out.println();
 
 				globalMatrix[0] += localMatrix[0];
@@ -584,40 +456,11 @@ public class ImageSearch extends JFrame implements ActionListener {
 			System.out.println("Final Result");
 			System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix + " -- FP = " + globalMatrix[2]
 					+ " -- FN = " + globalMatrix[3]);
-			System.out.println("Recall    : " + ImageFile.getRecall(globalMatrix));
-			System.out.println("Precision : " + ImageFile.getPrecision(globalMatrix));
-			System.out.println("F1-Score  : " + ImageFile.getF1Score(globalMatrix));
+			System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
+			System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
+			System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
 			System.out.println();
 			System.out.println();
-		}
-	}
-
-	private void runExecutable(String[] command) {
-		try {
-			// String[] command = {"CMD", "/C", "dir"};
-			ProcessBuilder pb = new ProcessBuilder(command);
-			pb.directory(new File(m_semanticFeaturePath));
-			Process process = pb.start();
-			// Read out dir output
-			InputStream is = process.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
-			BufferedReader br = new BufferedReader(isr);
-			String line;
-			System.out.printf("Output of running %s is:\n", Arrays.toString(command));
-			while ((line = br.readLine()) != null) {
-				System.out.println(line);
-			}
-
-			// Wait to get exit value
-			try {
-				int exitValue = process.waitFor();
-				System.out.println("\n\nExit Value is " + exitValue);
-			} catch (InterruptedException e2) {
-				// TODO Auto-generated catch block
-				e2.printStackTrace();
-			}
-		} catch (IOException e1) {
-			System.out.println("Error, exception while running executable : " + e1);
 		}
 	}
 
@@ -625,21 +468,14 @@ public class ImageSearch extends JFrame implements ActionListener {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
-			currImage.m_score = 0.0;
+			currImage.resetScore();
 		}
 
 		if (m_colorHistogramCheckBox.isSelected())
 			ColorHist.search(m_imageMap, queryImage);
 		
 		if (m_visualConceptCheckBox.isSelected()) {
-			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
-				ImageFile currImage = entry.getValue();
-				for(int i=0;i<25;i++){
-					if ((queryImage.m_semanticFeatures[i] > 0.0) && (currImage.m_category.contains(i))) {
-						currImage.m_score += queryImage.m_semanticFeatures[i];
-					}
-				}
-			}
+			VisualConcept.search(m_imageMap, queryImage);
 		}
 
 		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
@@ -647,6 +483,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
+			currImage.m_score = currImage.m_colorHistScore + currImage.m_semanticFeatureScore + currImage.m_visualConceptVectorScore;
 			result.add(currImage);
 			if (result.size() > m_resultSize)
 				result.pollLast();
