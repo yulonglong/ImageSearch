@@ -23,6 +23,8 @@ public class ImageSearch extends JFrame implements ActionListener {
 	int m_windowHeight = 1280;
 	int m_resultSize = 20; // size of the searching result
 
+	static String s_siftPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\siftDemoV4\\";
+	
 	String m_semanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\semanticFeature\\";
 	String m_semanticFeatureExecutableName = "image_classification.exe";
 	String m_semanticFeatureClass = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\semanticFeature\\1000d.csv";
@@ -480,6 +482,9 @@ public class ImageSearch extends JFrame implements ActionListener {
 		if (m_visualConceptCheckBox.isSelected())
 			VisualConcept.search(m_imageMap, queryImage);
 		
+		if (m_visualKeywordCheckBox.isSelected())
+			Sift.search(m_imageMap, queryImage);
+		
 		if (m_textCheckBox.isSelected())
 			Text.search(m_imageMap, queryImage);
 
@@ -488,7 +493,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
-			currImage.m_score = 0.4*currImage.m_colorHistScore + currImage.m_semanticFeatureScore + 1.5*currImage.m_visualConceptVectorScore + currImage.m_textScore;
+			currImage.m_score = 0.4*currImage.m_colorHistScore + currImage.m_semanticFeatureScore + 1.5*currImage.m_visualConceptVectorScore + currImage.m_siftScore + currImage.m_textScore;
 			result.add(currImage);
 			if (result.size() > m_resultSize)
 				result.pollLast();

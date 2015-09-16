@@ -18,6 +18,7 @@ public class ImageFile implements Comparable<ImageFile> {
 	double m_colorHistScore = 0.0;
 	double m_semanticFeatureScore = 0.0;
 	double m_visualConceptVectorScore = 0.0;
+	double m_siftScore = 0.0;
 	double m_textScore = 0.0;
 
 	ImageFile(File _file) {
@@ -47,6 +48,7 @@ public class ImageFile implements Comparable<ImageFile> {
 		m_semanticFeatureScore = 0.0;
 		m_visualConceptVectorScore = 0.0;
 		m_textScore = 0.0;
+		m_siftScore = 0.0;
 	}
 
 	Double getScore() {
