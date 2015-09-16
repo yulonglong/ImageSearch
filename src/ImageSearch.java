@@ -18,6 +18,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	ImageFile m_queryImageFile = null;
 	BufferedImage m_queryImage = null;
 	File m_queryFile;
+	
 	int m_windowWidth = 1600;
 	int m_windowHeight = 1280;
 	int m_resultSize = 20; // size of the searching result
@@ -47,7 +48,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
 	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
 	JCheckBox m_visualKeywordCheckBox = new JCheckBox("Visual Keywords");
-	JCheckBox m_textCheckbox = new JCheckBox("Text");
+	JCheckBox m_textCheckBox = new JCheckBox("Text");
 
 	JProgressBar m_progressBar = new JProgressBar();
 
@@ -153,13 +154,18 @@ public class ImageSearch extends JFrame implements ActionListener {
 			Scanner cin = new Scanner(new File(m_imageDescriptionPath));
 			while (cin.hasNext()) {
 				String imageFileName = cin.next();
-				String text = cin.nextLine();
+				String fulltext = cin.nextLine();
 				ImageFile currImage = m_imageMap.get(imageFileName);
-				currImage.m_description = text.trim();
+				Scanner innercin = new Scanner(fulltext);
+				while (innercin.hasNext()) {
+					currImage.m_description.add(innercin.next().trim().toLowerCase());
+				}
+				innercin.close();
 			}
 			cin.close();
 		} catch (Exception e) {
 			System.out.println("Error! Failed to read ImageDescription : " + e);
+			e.printStackTrace();
 		}
 		// End Reading image description texts
 		
@@ -243,20 +249,25 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 		}
 
-		// Begin Reading image m_description texts
+		// Begin Reading image description texts
 		try {
 			Scanner cin = new Scanner(new File(m_imageTestDescriptionPath));
 			while (cin.hasNext()) {
 				String imageFileName = cin.next();
-				String text = cin.nextLine();
+				String fulltext = cin.nextLine();
 				ImageFile currImage = m_imageTestMap.get(imageFileName);
-				currImage.m_description = text.trim();
+				Scanner innercin = new Scanner(fulltext);
+				while (innercin.hasNext()) {
+					currImage.m_description.add(innercin.next().trim().toLowerCase());
+				}
+				innercin.close();
 			}
 			cin.close();
 		} catch (Exception e) {
-			System.out.println("Error! Failed to read Test ImageDescription : " + e);
+			System.out.println("Error! Failed to read ImageTestDescription : " + e);
+			e.printStackTrace();
 		}
-		// End Reading image m_description texts
+		// End Reading image description texts
 
 		// Begin Reading Image Category
 		try {
@@ -298,7 +309,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		loadTestData();
 
 		// Main UI
-		m_openButton = new JButton("Select an image...", createImageIcon("images/Open16.gif"));
+		m_openButton = new JButton("Select an image...", GlobalHelper.createImageIcon("images/Open16.gif"));
 		m_openButton.addActionListener(this);
 
 		m_searchButton = new JButton("Search");
@@ -316,7 +327,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		buttonPanel.add(m_colorHistogramCheckBox);
 		buttonPanel.add(m_visualConceptCheckBox);
 		buttonPanel.add(m_visualKeywordCheckBox);
-		buttonPanel.add(m_textCheckbox);
+		buttonPanel.add(m_textCheckBox);
 
 		JPanel queryImagePanel = new JPanel();
 		queryImagePanel.add(m_queryImageLabel);
@@ -344,16 +355,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		// add(logScrollPane, BorderLayout.CENTER);
 	}
 
-	/** Returns an ImageIcon, or null if the path was invalid. */
-	protected static ImageIcon createImageIcon(String path) {
-		java.net.URL imgURL = ImageSearch.class.getResource(path);
-		if (imgURL != null) {
-			return new ImageIcon(imgURL);
-		} else {
-			System.err.println("Couldn't find file: " + path);
-			return null;
-		}
-	}
+
 
 	public void actionPerformed(ActionEvent e) {
 		// Set up the file chooser.
@@ -454,7 +456,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 				globalMatrix[3] += localMatrix[3];
 			}
 			System.out.println("Final Result");
-			System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix + " -- FP = " + globalMatrix[2]
+			System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
 					+ " -- FN = " + globalMatrix[3]);
 			System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
 			System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
@@ -474,16 +476,18 @@ public class ImageSearch extends JFrame implements ActionListener {
 		if (m_colorHistogramCheckBox.isSelected())
 			ColorHist.search(m_imageMap, queryImage);
 		
-		if (m_visualConceptCheckBox.isSelected()) {
+		if (m_visualConceptCheckBox.isSelected())
 			VisualConcept.search(m_imageMap, queryImage);
-		}
+		
+		if (m_textCheckBox.isSelected())
+			Text.search(m_imageMap, queryImage);
 
 		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
 		/* ranking the search results */
 
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
-			currImage.m_score = currImage.m_colorHistScore + currImage.m_semanticFeatureScore + currImage.m_visualConceptVectorScore;
+			currImage.m_score = 0.4*currImage.m_colorHistScore + currImage.m_semanticFeatureScore + 1.5*currImage.m_visualConceptVectorScore + currImage.m_textScore;
 			result.add(currImage);
 			if (result.size() > m_resultSize)
 				result.pollLast();

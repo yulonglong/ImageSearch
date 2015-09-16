@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 
+import javax.swing.ImageIcon;
+
 public class GlobalHelper {
 	public static void runExecutable(String[] command, File runDirectory) {
 		try {
@@ -55,5 +57,16 @@ public class GlobalHelper {
 		int fn = matrix[3];
 		double ans = 2.0 * (double) tp / (2.0 * (double) tp + (double) fp + (double) fn);
 		return ans;
+	}
+	
+	/** Returns an ImageIcon, or null if the path was invalid. */
+	public static ImageIcon createImageIcon(String path) {
+		java.net.URL imgURL = ImageSearch.class.getResource(path);
+		if (imgURL != null) {
+			return new ImageIcon(imgURL);
+		} else {
+			System.err.println("Couldn't find file: " + path);
+			return null;
+		}
 	}
 }

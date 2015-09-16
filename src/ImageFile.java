@@ -1,14 +1,13 @@
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Comparator;
-import java.util.TreeSet;
+import java.util.*;
 
 import javax.imageio.ImageIO;
 
 public class ImageFile implements Comparable<ImageFile> {
 	BufferedImage m_bufferedImage;
 	String m_name;
-	String m_description;
+	ArrayList<String> m_description = new ArrayList<String>();
 	
 	double[] m_colorHistogram;
 	double[] m_semanticFeatures = new double[25];
@@ -19,6 +18,7 @@ public class ImageFile implements Comparable<ImageFile> {
 	double m_colorHistScore = 0.0;
 	double m_semanticFeatureScore = 0.0;
 	double m_visualConceptVectorScore = 0.0;
+	double m_textScore = 0.0;
 
 	ImageFile(File _file) {
 		try {
@@ -46,6 +46,7 @@ public class ImageFile implements Comparable<ImageFile> {
 		m_colorHistScore = 0.0;
 		m_semanticFeatureScore = 0.0;
 		m_visualConceptVectorScore = 0.0;
+		m_textScore = 0.0;
 	}
 
 	Double getScore() {
