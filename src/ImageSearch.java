@@ -12,6 +12,8 @@ public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
 	final static int s_totalCategoryNum = 25;
 
+	final static boolean s_enableColorHistCache = false;
+	
 	JFileChooser m_fc;
 	JPanel m_contentPane;
 
@@ -20,31 +22,32 @@ public class ImageSearch extends JFrame implements ActionListener {
 	File m_queryFile;
 	
 	int m_windowWidth = 1600;
-	int m_windowHeight = 1280;
+	int m_windowHeight = 900;
 	int m_resultSize = 20; // size of the searching result
 
-	static String s_siftPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\siftDemoV4\\";
+	static String s_mainDatapath = "D:\\GitHub\\ImageSearchFull\\MainDirectory\\";
+	static String s_siftPath = s_mainDatapath + "FeatureExtractor\\siftDemoV4\\";
 	
-	String m_semanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\semanticFeature\\";
+	String m_semanticFeaturePath = s_mainDatapath + "FeatureExtractor\\semanticFeature\\";
 	String m_semanticFeatureExecutableName = "image_classification.exe";
-	String m_semanticFeatureClass = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\semanticFeature\\1000d.csv";
+	String m_semanticFeatureClass = s_mainDatapath + "FeatureExtractor\\semanticFeature\\1000d.csv";
 
-	String m_imageDataPgmPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete_pgm\\";
-	String m_imageDataPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\";
-	String m_imageSemanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\semanticFeature_complete\\";
-	String m_imageListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\train\\TrainImagelist.txt";
-	String m_imageDescriptionPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\train_tags.txt";
-	String m_imageCategoryPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\category_names.txt";
-	String m_groundTruthPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\Groundtruth\\train\\";
+	String m_imageDataPgmPath = s_mainDatapath + "ImageData\\train\\data_complete_pgm\\";
+	String m_imageDataPath = s_mainDatapath + "ImageData\\train\\data_complete\\";
+	String m_imageSemanticFeaturePath = s_mainDatapath + "ImageData\\train\\semanticFeature_complete\\";
+	String m_imageListPath = s_mainDatapath + "ImageList\\train\\TrainImagelist.txt";
+	String m_imageDescriptionPath = s_mainDatapath + "ImageData\\train\\train_tags.txt";
+	String m_imageCategoryPath = s_mainDatapath + "ImageData\\category_names.txt";
+	String m_groundTruthPath = s_mainDatapath + "Groundtruth\\train\\";
 
-	String m_imageTestDataPgmPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\data_complete_pgm\\";
-	String m_imageTestDataPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\data_complete\\";
-	String m_imageTestSemanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\semanticFeature_complete\\";
-	String m_imageTestListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\test\\TestImagelist.txt";
-	String m_imageTestDescriptionPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\test_tags.txt";
-	String m_testGroundTruthPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\Groundtruth\\test\\";
+	String m_imageTestDataPgmPath = s_mainDatapath + "ImageData\\test\\data_complete_pgm\\";
+	String m_imageTestDataPath = s_mainDatapath + "ImageData\\test\\data_complete\\";
+	String m_imageTestSemanticFeaturePath = s_mainDatapath + "ImageData\\test\\semanticFeature_complete\\";
+	String m_imageTestListPath = s_mainDatapath + "ImageList\\test\\TestImagelist.txt";
+	String m_imageTestDescriptionPath = s_mainDatapath + "ImageData\\test\\test_tags.txt";
+	String m_testGroundTruthPath = s_mainDatapath + "Groundtruth\\test\\";
 
-	JButton m_openButton, m_searchButton, m_testButton;
+	JButton m_openButton, m_searchButton, m_testButton, m_multipleTestButton;
 
 	JLabel[] m_imageLabels = new JLabel[m_resultSize];
 	JLabel m_queryImageLabel = new JLabel();
@@ -321,12 +324,16 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		m_testButton = new JButton("Run Test");
 		m_testButton.addActionListener(this);
+		
+		m_multipleTestButton = new JButton("Run Multiple Test");
+		m_multipleTestButton.addActionListener(this);
 
 		// For layout purposes, put the buttons in a separate panel
 		JPanel buttonPanel = new JPanel(); // use FlowLayout
 		buttonPanel.add(m_openButton);
 		buttonPanel.add(m_searchButton);
 		buttonPanel.add(m_testButton);
+		buttonPanel.add(m_multipleTestButton);
 
 		buttonPanel.add(m_colorHistogramCheckBox);
 		buttonPanel.add(m_visualConceptCheckBox);
@@ -432,44 +439,25 @@ public class ImageSearch extends JFrame implements ActionListener {
 				m_imageLabelsIndex++;
 			}
 		} else if (e.getSource() == m_testButton) {
-			int[] globalMatrix = new int[4];
-			for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
-				ImageFile currImageTest = entry.getValue();
-				TreeSet<ImageFile> result = getRank(currImageTest);
-
-				int[] localMatrix = new int[4];
-				for (ImageFile currResult : result) {
-					int[] matrix = new int[4];
-					currResult.getConfusionMatrix(currImageTest, matrix);
-					localMatrix[0] += matrix[0];
-					localMatrix[1] += matrix[1];
-					localMatrix[2] += matrix[2];
-					localMatrix[3] += matrix[3];
-				}
-
-				System.out.println(currImageTest.m_name);
-				System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix[1] + " -- FP = " + localMatrix[2]
-						+ " -- FN = " + localMatrix[3]);
-				System.out.println("Recall    : " + GlobalHelper.getRecall(localMatrix));
-				System.out.println("Precision : " + GlobalHelper.getPrecision(localMatrix));
-				System.out.println("F1-Score  : " + GlobalHelper.getF1Score(localMatrix));
-				System.out.println();
-
-				globalMatrix[0] += localMatrix[0];
-				globalMatrix[1] += localMatrix[1];
-				globalMatrix[2] += localMatrix[2];
-				globalMatrix[3] += localMatrix[3];
-			}
-			System.out.println("Final Result");
-			System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
-					+ " -- FN = " + globalMatrix[3]);
-			System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
-			System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
-			System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
-			System.out.println();
-			System.out.println();
+			runTest();
+		}
+		else if (e.getSource() == m_multipleTestButton) {
+			runMultipleTests();
 		}
 	}
+	
+	private int weightColorHist = 1;
+	private int weightSemanticFeature = 1;
+	private int weightVisualConcept = 1;
+	private int weightSift = 1;
+	private int weightText = 1;
+	private double bestF1 = 0;
+	private int bestWeightColorHist = 1;
+	private int bestWeightSemanticFeature = 1;
+	private int bestWeightVisualConcept = 1;
+	private int bestWeightSift = 1;
+	private int bestWeightText = 1;
+	private int maxWeight = 4;
 
 	public TreeSet<ImageFile> getRank(ImageFile queryImage) {
 		// Reset all scores
@@ -495,12 +483,82 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
-			currImage.m_score = 0.4*currImage.m_colorHistScore + currImage.m_semanticFeatureScore + 1.5*currImage.m_visualConceptVectorScore + currImage.m_siftScore + currImage.m_textScore;
+			currImage.m_score = (double)weightColorHist*currImage.m_colorHistScore + 
+					(double)weightSemanticFeature*currImage.m_semanticFeatureScore + 
+					(double)weightVisualConcept*currImage.m_visualConceptVectorScore + 
+					(double)weightSift*currImage.m_siftScore + 
+					(double)weightText*currImage.m_textScore;
 			result.add(currImage);
 			if (result.size() > m_resultSize)
 				result.pollLast();
 		}
 		return result;
+	}
+	
+	private double runTest() {
+		int[] globalMatrix = new int[4];
+		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
+			ImageFile currImageTest = entry.getValue();
+			TreeSet<ImageFile> result = getRank(currImageTest);
+
+			int[] localMatrix = new int[4];
+			for (ImageFile currResult : result) {
+				int[] matrix = new int[4];
+				currResult.getConfusionMatrix(currImageTest, matrix);
+				localMatrix[0] += matrix[0];
+				localMatrix[1] += matrix[1];
+				localMatrix[2] += matrix[2];
+				localMatrix[3] += matrix[3];
+			}
+
+//			System.out.println(currImageTest.m_name);
+//			System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix[1] + " -- FP = " + localMatrix[2]
+//					+ " -- FN = " + localMatrix[3]);
+//			System.out.println("Recall    : " + GlobalHelper.getRecall(localMatrix));
+//			System.out.println("Precision : " + GlobalHelper.getPrecision(localMatrix));
+//			System.out.println("F1-Score  : " + GlobalHelper.getF1Score(localMatrix));
+//			System.out.println();
+
+			globalMatrix[0] += localMatrix[0];
+			globalMatrix[1] += localMatrix[1];
+			globalMatrix[2] += localMatrix[2];
+			globalMatrix[3] += localMatrix[3];
+		}
+		System.out.println("Final Result");
+		System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
+				+ " -- FN = " + globalMatrix[3]);
+		System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
+		System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
+		System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
+		System.out.println();
+		System.out.println();
+		
+		return GlobalHelper.getF1Score(globalMatrix);
+	}
+	
+	private void runMultipleTests() {
+		for(weightColorHist=0;weightColorHist<=maxWeight;weightColorHist++) {
+			for(weightSemanticFeature=0;weightSemanticFeature<=maxWeight;weightSemanticFeature++) {
+				for(weightVisualConcept=0;weightVisualConcept<=maxWeight;weightVisualConcept++) {
+					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
+						for(weightText=0;weightText<=maxWeight;weightText++) {
+							double currF1 = runTest();
+							if (currF1 > bestF1) {
+								bestF1 = currF1;
+								bestWeightColorHist = weightColorHist;
+								bestWeightSemanticFeature = weightSemanticFeature;
+								bestWeightVisualConcept = weightVisualConcept;
+								bestWeightSift = weightSift;
+								bestWeightText = weightText;
+								System.out.println("Current Best F1-Score : " + bestF1);
+								System.out.println(bestWeightColorHist+"--"+bestWeightSemanticFeature+"--"+bestWeightVisualConcept+"--"+bestWeightSift+"--"+bestWeightText);
+								System.out.println();
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public static void main(String[] args) {

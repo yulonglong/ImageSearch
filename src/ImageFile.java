@@ -29,7 +29,8 @@ public class ImageFile implements Comparable<ImageFile> {
 			m_bufferedImage = ImageIO.read(_file);
 			m_fullImagePath = _file.toString();
 			m_name = _file.getName();
-			m_colorHistogram = ColorHist.getHist(m_bufferedImage);
+			if (ImageSearch.s_enableColorHistCache)
+				m_colorHistogram = ColorHist.getHist(m_bufferedImage);
 		} catch (Exception e) {
 			System.out.println("Image File exception : " + e);
 		}
@@ -40,7 +41,8 @@ public class ImageFile implements Comparable<ImageFile> {
 			m_bufferedImage = ImageIO.read(_file);
 			m_fullImagePath = _file.toString();
 			m_name = _file.getName();
-			m_colorHistogram = ColorHist.getHist(m_bufferedImage);
+			if (ImageSearch.s_enableColorHistCache)
+				m_colorHistogram = ColorHist.getHist(m_bufferedImage);
 			m_visualConceptVector = VisualConcept.getVisualConceptVector(semanticFeatureFile, m_semanticFeatures);
 		} catch (Exception e) {
 			System.out.println("Image File exception : " + e);
@@ -52,7 +54,8 @@ public class ImageFile implements Comparable<ImageFile> {
 			m_bufferedImage = ImageIO.read(_file);
 			m_name = _file.getName();
 			m_fullImagePath = _file.toString();
-			m_colorHistogram = ColorHist.getHist(m_bufferedImage);
+			if (ImageSearch.s_enableColorHistCache)
+				m_colorHistogram = ColorHist.getHist(m_bufferedImage);
 			m_visualConceptVector = VisualConcept.getVisualConceptVector(semanticFeatureFile, m_semanticFeatures);
 			m_fullPgmPath = pgmDataPath + GlobalHelper.changeExtension(m_name, ".pgm");
 			m_fullKeyPath = pgmDataPath + GlobalHelper.changeExtension(m_name, ".key");

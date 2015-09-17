@@ -1,7 +1,5 @@
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
-import java.io.File;
-import java.nio.file.Files;
 import java.util.*;
 
 class ColorHistThread implements Runnable {
@@ -16,6 +14,8 @@ class ColorHistThread implements Runnable {
 	@Override
 	public void run() {
 		double[] currHist = currImage.m_colorHistogram;
+		if (currHist == null) 
+			currHist = ColorHist.getHist(currImage.m_bufferedImage);
 		currImage.m_colorHistScore += ColorHist.computeSimilarity(targetHist, currHist);
 	}
 }
@@ -26,6 +26,8 @@ public class ColorHist {
 
 	public static void search(TreeMap<String, ImageFile> images, ImageFile queryImage) {
 		double[] targetHist = queryImage.m_colorHistogram;
+		if (targetHist == null)
+			targetHist = getHist(queryImage.m_bufferedImage);
 		/* ranking the search results */
 		ArrayList<Thread> threadsList = new ArrayList<Thread>();
 		for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
