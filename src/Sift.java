@@ -30,35 +30,13 @@ public class Sift {
 		for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
 			ImageFile currImage = entry.getValue();
 			
-			String currImageName = currImage.m_name;
-			int inPos = currImageName.lastIndexOf(".");
-			if (inPos > 0) {
-				currImageName = currImageName.substring(0, inPos);
-			}
-			String currImagePgmFilePath = ImageSearch.s_siftPath + currImageName + ".pgm";
-			File currImagePgmFile = new File(currImagePgmFilePath);
-			String currImageKeyFilePath = ImageSearch.s_siftPath + currImageName + ".key";
-			File currImageKeyFile = new File(currImageKeyFilePath);
-			try {
-				BufferedImage convertedImage = GlobalHelper.getGrayScale(currImage.m_bufferedImage);
-				ImageIO.write(convertedImage, "pnm", currImagePgmFile);
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
-			
-			String[] commandCurr = {"cmd", "/c" , "siftWin32.exe", "<"+currImageName+".pgm", ">"+currImageName+".key"};
-			int numCurrFeatures = GlobalHelper.runExecutable(commandCurr, new File(ImageSearch.s_siftPath));
-			
-			String[] commandMatch = {"cmd", "/c" , "match.exe", "-im1", currImageName+".pgm", "-k1", currImageName+".key", "-im2", queryImageName+".pgm", "-k2", queryImageName+".key", ">out.txt"};
+			String[] commandMatch = {"cmd", "/c" , "match.exe", "-im1", currImage.m_fullPgmPath, "-k1", currImage.m_fullKeyPath, "-im2", queryImageName+".pgm", "-k2", queryImageName+".key", ">out.txt"};
 			int numMatchingFeatures = GlobalHelper.runExecutable(commandMatch, new File(ImageSearch.s_siftPath));
 			
-			System.out.println(numQueryFeatures + " " + numCurrFeatures + " " + numMatchingFeatures);
+			System.out.println(numQueryFeatures + " " + numMatchingFeatures);
 			
-			currImage.m_siftScore += (double)numMatchingFeatures / (double)Math.min(numQueryFeatures, numCurrFeatures);
-			
-			currImagePgmFile.delete();
-			currImageKeyFile.delete();
+			currImage.m_siftScore += (double)numMatchingFeatures / (double) numQueryFeatures;
+			if (currImage.m_siftScore > 1.0) currImage.m_siftScore = 1.0;
 		}
 		
 		queryImagePgmFile.delete();

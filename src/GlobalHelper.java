@@ -78,6 +78,15 @@ public class GlobalHelper {
 		}
 		return 0;
 	}
+	
+	public static String changeExtension(String originalFilename, String newExtension) {
+		String currImageName = originalFilename;
+		int inPos = currImageName.lastIndexOf(".");
+		if (inPos > 0) {
+			currImageName = currImageName.substring(0, inPos);
+		}
+		return (currImageName + newExtension);
+	}
 
 	public static BufferedImage getGrayScale(BufferedImage inputImage){
 	    BufferedImage img = new BufferedImage(inputImage.getWidth(), inputImage.getHeight(), BufferedImage.TYPE_BYTE_GRAY);

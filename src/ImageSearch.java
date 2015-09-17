@@ -29,6 +29,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	String m_semanticFeatureExecutableName = "image_classification.exe";
 	String m_semanticFeatureClass = "D:\\GitHub\\ImageSearchFull\\Assignment1\\FeatureExtractor\\semanticFeature\\1000d.csv";
 
+	String m_imageDataPgmPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete_pgm\\";
 	String m_imageDataPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\data_complete\\";
 	String m_imageSemanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\train\\semanticFeature_complete\\";
 	String m_imageListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\train\\TrainImagelist.txt";
@@ -36,6 +37,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	String m_imageCategoryPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\category_names.txt";
 	String m_groundTruthPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\Groundtruth\\train\\";
 
+	String m_imageTestDataPgmPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\data_complete_pgm\\";
 	String m_imageTestDataPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\data_complete\\";
 	String m_imageTestSemanticFeaturePath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageData\\test\\semanticFeature_complete\\";
 	String m_imageTestListPath = "D:\\GitHub\\ImageSearchFull\\Assignment1\\ImageList\\test\\TestImagelist.txt";
@@ -138,7 +140,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 			File semanticFile = new File(m_imageSemanticFeaturePath + semanticFilename + ".txt");
 
-			ImageFile currImage = new ImageFile(files[i], semanticFile);
+			ImageFile currImage = new ImageFile(files[i], semanticFile, m_imageDataPgmPath);
 			m_imageMap.put(currImage.m_name, currImage);
 			imageName.remove(currImage.m_name); // Remove the image filem_name
 												// from the list
@@ -238,7 +240,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 			File semanticFile = new File(m_imageTestSemanticFeaturePath + semanticFilename + ".txt");
 
-			ImageFile currImage = new ImageFile(files[i], semanticFile);
+			ImageFile currImage = new ImageFile(files[i], semanticFile, m_imageTestDataPgmPath);
 			m_imageTestMap.put(currImage.m_name, currImage);
 			imageName.remove(currImage.m_name); // Remove the image filem_name
 												// from the list
