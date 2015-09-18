@@ -89,6 +89,15 @@ public class ImageFile implements Comparable<ImageFile> {
 	public int compareTo(ImageFile thatImage) {
 		return this.m_name.compareTo(thatImage.m_name);
 	}
+	
+	public boolean isRelevant(ImageFile queryFile) {
+		for (Integer thisCat : m_category) {
+			if (queryFile.m_category.contains(thisCat)) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	// matrix sequence tp,tn,fp,fn
 	public void getConfusionMatrix(ImageFile queryFile, int[] matrix) {

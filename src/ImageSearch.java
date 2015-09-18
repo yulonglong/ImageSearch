@@ -437,26 +437,13 @@ public class ImageSearch extends JFrame implements ActionListener {
 				m_imageLabelsIndex++;
 			}
 		} else if (e.getSource() == m_testButton) {
-			runTest(false);
+			runTestIR(false);
 		}
 		else if (e.getSource() == m_multipleTestButton) {
 			runMultipleTests();
 		}
 	}
 	
-	private int weightColorHist = 1;
-	private int weightSemanticFeature = 1;
-	private int weightVisualConcept = 1;
-	private int weightSift = 1;
-	private int weightText = 1;
-	private double bestF1 = 0;
-	private int bestWeightColorHist = 1;
-	private int bestWeightSemanticFeature = 1;
-	private int bestWeightVisualConcept = 1;
-	private int bestWeightSift = 1;
-	private int bestWeightText = 1;
-	private int maxWeight = 10;
-
 	public TreeSet<ImageFile> getRank(ImageFile queryImage) {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
@@ -490,11 +477,35 @@ public class ImageSearch extends JFrame implements ActionListener {
 			if (result.size() > m_resultSize)
 				result.pollLast();
 		}
-		
 		return result;
 		
 	}
 	
+	private int weightColorHist = 1;
+	private int weightSemanticFeature = 1;
+	private int weightVisualConcept = 1;
+	private int weightSift = 1;
+	private int weightText = 1;
+	private double bestMAP = 0;
+	private int bestWeightColorHist = 1;
+	private int bestWeightSemanticFeature = 1;
+	private int bestWeightVisualConcept = 1;
+	private int bestWeightSift = 1;
+	private int bestWeightText = 1;
+	private int maxWeight = 10;
+	
+	TreeMap<Pair,Double> m_colorHistScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_semanticFeatureScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_visualConceptScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_siftScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_textScoreMap = new TreeMap<Pair,Double>();
+	
+	static String s_colorHistScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\ColorHist.txt";
+	static String s_semanticFeatureScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\SemanticFeature.txt";
+	static String s_visualConceptScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\VisualConcept.txt";
+	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
+	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
+
 	public TreeSet<ImageFile> getRankWithOutput(ImageFile queryImage) {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
@@ -589,12 +600,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 			if (result.size() > m_resultSize)
 				result.pollLast();
 		}
-		
 		return result;
-		
 	}
 	
-	private double runTest(boolean isScoreFromFile) {
+	private double runTestConfusionMatrix(boolean isScoreFromFile) {
 		int[] globalMatrix = new int[4];
 		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
 			ImageFile currImageTest = entry.getValue();
@@ -630,6 +639,39 @@ public class ImageSearch extends JFrame implements ActionListener {
 		return GlobalHelper.getF1Score(globalMatrix);
 	}
 	
+	private double runTestIR(boolean isScoreFromFile) {
+		
+		double totalPrecision = 0.0;
+		
+		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
+			ImageFile currImageTest = entry.getValue();
+			TreeSet<ImageFile> result;
+			if (isScoreFromFile)
+				result = getRankFromScoreFile(currImageTest);
+			else 
+				result = getRank(currImageTest);
+			
+			int numRetrieved = result.size();
+			int numRetrievedAndRelevant = 0;
+
+			for (ImageFile currResult : result) {
+				if (currResult.isRelevant(currImageTest)) {
+					numRetrievedAndRelevant++;
+				}
+			}
+			
+			double currPrecision = (double)numRetrievedAndRelevant / (double)numRetrieved;
+			totalPrecision += currPrecision;
+		}
+		
+		double meanAveragePrecision = totalPrecision/(double)m_imageTestMap.size();
+		
+		System.out.println("MAP  : " + meanAveragePrecision);
+		System.out.println();
+		
+		return meanAveragePrecision;
+	}
+	
 	class Pair implements Comparable<Pair> {
 		String first;
 		String second;
@@ -651,18 +693,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		}
 	}
 	
-	TreeMap<Pair,Double> m_colorHistScoreMap = new TreeMap<Pair,Double>();
-	TreeMap<Pair,Double> m_semanticFeatureScoreMap = new TreeMap<Pair,Double>();
-	TreeMap<Pair,Double> m_visualConceptScoreMap = new TreeMap<Pair,Double>();
-	TreeMap<Pair,Double> m_siftScoreMap = new TreeMap<Pair,Double>();
-	TreeMap<Pair,Double> m_textScoreMap = new TreeMap<Pair,Double>();
-	
-	static String s_colorHistScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\ColorHist.txt";
-	static String s_semanticFeatureScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\SemanticFeature.txt";
-	static String s_visualConceptScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\VisualConcept.txt";
-	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
-	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
-	
+
 	void readScore(TreeMap<Pair,Double> scoreMap, String scoreFilePath) {
 		try {
 			scoreMap.clear();
@@ -694,15 +725,15 @@ public class ImageSearch extends JFrame implements ActionListener {
 					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
 						for(weightText=0;weightText<=maxWeight;weightText++) {
 							System.out.println(weightColorHist+"--"+weightSemanticFeature+"--"+weightVisualConcept+"--"+weightSift+"--"+weightText);
-							double currF1 = runTest(true);
-							if (currF1 > bestF1) {
-								bestF1 = currF1;
+							double currMAP = runTestIR(true);
+							if (currMAP > bestMAP) {
+								bestMAP = currMAP;
 								bestWeightColorHist = weightColorHist;
 								bestWeightSemanticFeature = weightSemanticFeature;
 								bestWeightVisualConcept = weightVisualConcept;
 								bestWeightSift = weightSift;
 								bestWeightText = weightText;
-								System.out.println("Current Best F1-Score : " + bestF1);
+								System.out.println("Current Best MAP : " + bestMAP);
 								System.out.println(bestWeightColorHist+"--"+bestWeightSemanticFeature+"--"+bestWeightVisualConcept+"--"+bestWeightSift+"--"+bestWeightText);
 								System.out.println();
 							}
