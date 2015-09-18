@@ -25,6 +25,8 @@ class SiftThread implements Runnable {
 		File fromKey = new File(ImageSearch.s_siftPath + queryImageName + ".key");
 		File toKey = new File(ImageSearch.s_siftPath + queryImageName + "_" + index + ".key");
 		try {
+			toPgm.delete();
+			toKey.delete();
 			Files.copy( fromPgm.toPath(), toPgm.toPath() );
 			Files.copy( fromKey.toPath(), toKey.toPath() );
 		}

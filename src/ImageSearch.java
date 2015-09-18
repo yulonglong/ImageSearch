@@ -367,8 +367,6 @@ public class ImageSearch extends JFrame implements ActionListener {
 		// add(logScrollPane, BorderLayout.CENTER);
 	}
 
-
-
 	public void actionPerformed(ActionEvent e) {
 		// Set up the file chooser.
 		if (e.getSource() == m_openButton) {
@@ -439,7 +437,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 				m_imageLabelsIndex++;
 			}
 		} else if (e.getSource() == m_testButton) {
-			runTest();
+			runTest(false);
 		}
 		else if (e.getSource() == m_multipleTestButton) {
 			runMultipleTests();
@@ -457,7 +455,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	private int bestWeightVisualConcept = 1;
 	private int bestWeightSift = 1;
 	private int bestWeightText = 1;
-	private int maxWeight = 4;
+	private int maxWeight = 10;
 
 	public TreeSet<ImageFile> getRank(ImageFile queryImage) {
 		// Reset all scores
@@ -480,7 +478,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
 		/* ranking the search results */
-
+		
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
 			currImage.m_score = (double)weightColorHist*currImage.m_colorHistScore + 
@@ -492,14 +490,119 @@ public class ImageSearch extends JFrame implements ActionListener {
 			if (result.size() > m_resultSize)
 				result.pollLast();
 		}
+		
 		return result;
+		
 	}
 	
-	private double runTest() {
+	public TreeSet<ImageFile> getRankWithOutput(ImageFile queryImage) {
+		// Reset all scores
+		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+			ImageFile currImage = entry.getValue();
+			currImage.resetScore();
+		}
+
+		if (m_colorHistogramCheckBox.isSelected())
+			ColorHist.search(m_imageMap, queryImage);
+		
+		if (m_visualConceptCheckBox.isSelected())
+			VisualConcept.search(m_imageMap, queryImage);
+		
+		if (m_visualKeywordCheckBox.isSelected())
+			Sift.search(m_imageMap, queryImage);
+		
+		if (m_textCheckBox.isSelected())
+			Text.search(m_imageMap, queryImage);
+
+		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
+		/* ranking the search results */
+		
+		try {
+			PrintWriter pw1 = new PrintWriter(new BufferedWriter(new FileWriter(s_colorHistScorePath, true)));
+			PrintWriter pw2 = new PrintWriter(new BufferedWriter(new FileWriter(s_semanticFeatureScorePath, true)));
+			PrintWriter pw3 = new PrintWriter(new BufferedWriter(new FileWriter(s_visualConceptScorePath, true)));
+			PrintWriter pw4 = new PrintWriter(new BufferedWriter(new FileWriter(s_siftScorePath, true)));
+			PrintWriter pw5 = new PrintWriter(new BufferedWriter(new FileWriter(s_textScorePath, true)));
+
+			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+				ImageFile currImage = entry.getValue();
+				currImage.m_score = (double)weightColorHist*currImage.m_colorHistScore + 
+						(double)weightSemanticFeature*currImage.m_semanticFeatureScore + 
+						(double)weightVisualConcept*currImage.m_visualConceptVectorScore + 
+						(double)weightSift*currImage.m_siftScore + 
+						(double)weightText*currImage.m_textScore;
+				result.add(currImage);
+				if (result.size() > m_resultSize)
+					result.pollLast();
+				
+				pw1.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_colorHistScore);
+				pw2.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_semanticFeatureScore);
+				pw3.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_visualConceptVectorScore);
+				pw4.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_siftScore);
+				pw5.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_textScore);
+				pw1.flush();
+				pw2.flush();
+				pw3.flush();
+				pw4.flush();
+				pw5.flush();
+			}
+			
+			pw1.close();
+			pw2.close();
+			pw3.close();
+			pw4.close();
+			pw5.close();
+		
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return result;
+		
+	}
+	
+	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage) {
+		// Reset all scores
+		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+			ImageFile currImage = entry.getValue();
+			currImage.resetScore();
+		}
+
+		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
+		/* ranking the search results */
+		
+		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+			ImageFile currImage = entry.getValue();
+			Double colorHistScore = m_colorHistScoreMap.get(new Pair(queryImage.m_name,currImage.m_name));
+			Double semanticFeatureScore = m_semanticFeatureScoreMap.get(new Pair(queryImage.m_name,currImage.m_name));
+			Double visualConceptScore = m_visualConceptScoreMap.get(new Pair(queryImage.m_name,currImage.m_name));
+			Double siftScore = m_siftScoreMap.get(new Pair(queryImage.m_name,currImage.m_name));
+			Double textScore = m_textScoreMap.get(new Pair(queryImage.m_name,currImage.m_name));
+			
+			currImage.m_score = (double)weightColorHist*colorHistScore + 
+					(double)weightSemanticFeature*semanticFeatureScore + 
+					(double)weightVisualConcept*visualConceptScore + 
+					(double)weightSift*siftScore + 
+					(double)weightText*textScore;
+			result.add(currImage);
+			if (result.size() > m_resultSize)
+				result.pollLast();
+		}
+		
+		return result;
+		
+	}
+	
+	private double runTest(boolean isScoreFromFile) {
 		int[] globalMatrix = new int[4];
 		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
 			ImageFile currImageTest = entry.getValue();
-			TreeSet<ImageFile> result = getRank(currImageTest);
+			TreeSet<ImageFile> result;
+			if (isScoreFromFile)
+				result = getRankFromScoreFile(currImageTest);
+			else 
+				result = getRank(currImageTest);
 
 			int[] localMatrix = new int[4];
 			for (ImageFile currResult : result) {
@@ -510,15 +613,6 @@ public class ImageSearch extends JFrame implements ActionListener {
 				localMatrix[2] += matrix[2];
 				localMatrix[3] += matrix[3];
 			}
-
-//			System.out.println(currImageTest.m_name);
-//			System.out.println("TP = " + localMatrix[0] + " -- TN = " + localMatrix[1] + " -- FP = " + localMatrix[2]
-//					+ " -- FN = " + localMatrix[3]);
-//			System.out.println("Recall    : " + GlobalHelper.getRecall(localMatrix));
-//			System.out.println("Precision : " + GlobalHelper.getPrecision(localMatrix));
-//			System.out.println("F1-Score  : " + GlobalHelper.getF1Score(localMatrix));
-//			System.out.println();
-
 			globalMatrix[0] += localMatrix[0];
 			globalMatrix[1] += localMatrix[1];
 			globalMatrix[2] += localMatrix[2];
@@ -536,13 +630,71 @@ public class ImageSearch extends JFrame implements ActionListener {
 		return GlobalHelper.getF1Score(globalMatrix);
 	}
 	
+	class Pair implements Comparable<Pair> {
+		String first;
+		String second;
+		Pair(String _first, String _second) {
+			first = _first;
+			second = _second;
+		}
+		
+		@Override
+		public int compareTo(Pair other) {
+			if (first.equals(other.first)){
+				return second.compareTo(other.second);
+			}
+			return first.compareTo(other.first);
+		}
+		
+		public boolean equals(Pair other) {
+			return (first.equals(other.first) && second.equals(other.second));
+		}
+	}
+	
+	TreeMap<Pair,Double> m_colorHistScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_semanticFeatureScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_visualConceptScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_siftScoreMap = new TreeMap<Pair,Double>();
+	TreeMap<Pair,Double> m_textScoreMap = new TreeMap<Pair,Double>();
+	
+	static String s_colorHistScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\ColorHist.txt";
+	static String s_semanticFeatureScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\SemanticFeature.txt";
+	static String s_visualConceptScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\VisualConcept.txt";
+	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
+	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
+	
+	void readScore(TreeMap<Pair,Double> scoreMap, String scoreFilePath) {
+		try {
+			scoreMap.clear();
+			Scanner cin = new Scanner(new File(scoreFilePath));
+			while (cin.hasNext()) {
+				String from = cin.next();
+				String to = cin.next();
+				Double score = cin.nextDouble();
+				Pair newPair = new Pair(from,to);
+				scoreMap.put(newPair, score);
+			}
+			cin.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	private void runMultipleTests() {
+		readScore(m_colorHistScoreMap, s_colorHistScorePath);
+		readScore(m_semanticFeatureScoreMap, s_semanticFeatureScorePath);
+		readScore(m_visualConceptScoreMap, s_visualConceptScorePath);
+		readScore(m_siftScoreMap, s_siftScorePath);
+		readScore(m_textScoreMap, s_textScorePath);
+		
 		for(weightColorHist=0;weightColorHist<=maxWeight;weightColorHist++) {
 			for(weightSemanticFeature=0;weightSemanticFeature<=maxWeight;weightSemanticFeature++) {
 				for(weightVisualConcept=0;weightVisualConcept<=maxWeight;weightVisualConcept++) {
 					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
 						for(weightText=0;weightText<=maxWeight;weightText++) {
-							double currF1 = runTest();
+							System.out.println(weightColorHist+"--"+weightSemanticFeature+"--"+weightVisualConcept+"--"+weightSift+"--"+weightText);
+							double currF1 = runTest(true);
 							if (currF1 > bestF1) {
 								bestF1 = currF1;
 								bestWeightColorHist = weightColorHist;
