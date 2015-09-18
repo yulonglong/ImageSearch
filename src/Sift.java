@@ -98,4 +98,51 @@ public class Sift {
 		
 		return;
 	}
+	
+	public static void search(TreeSet<ImageFile> images, ImageFile queryImage) {
+		String queryImageName = queryImage.m_name;
+		int pos = queryImageName.lastIndexOf(".");
+		if (pos > 0) {
+			queryImageName = queryImageName.substring(0, pos);
+		}
+		String queryImagePgmFilePath = ImageSearch.s_siftPath + queryImageName + ".pgm";
+		File queryImagePgmFile = new File(queryImagePgmFilePath);
+		String queryImageKeyFilePath = ImageSearch.s_siftPath + queryImageName + ".key";
+		File queryImageKeyFile = new File(queryImageKeyFilePath);
+		try {
+			BufferedImage convertedImage = GlobalHelper.getGrayScale(queryImage.m_bufferedImage);
+			ImageIO.write(convertedImage, "pnm", queryImagePgmFile);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		String[] commandQuery = {"cmd", "/c" , "siftWin32.exe", "<"+queryImageName+".pgm", ">"+queryImageName+".key"};
+		int numQueryFeatures = GlobalHelper.runExecutable(commandQuery, new File(ImageSearch.s_siftPath));
+		
+		ArrayList<Thread> threadsList = new ArrayList<Thread>();
+		int threadIndex = 0;
+		for (ImageFile currImage : images) {
+			
+			Runnable r = new SiftThread(currImage, queryImageName, numQueryFeatures, threadIndex++);
+			Thread t = new Thread(r);
+			threadsList.add(t);
+			t.start();
+		}
+		
+		try {
+			for(Thread t: threadsList) {
+				t.join();
+			}
+		}
+		catch (Exception e) {
+			System.out.println("Failed to join threads");
+			e.printStackTrace();
+		}
+		
+		queryImagePgmFile.delete();
+		queryImageKeyFile.delete();
+		
+		return;
+	}
 }

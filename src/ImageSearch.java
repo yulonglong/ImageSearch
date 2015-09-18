@@ -445,6 +445,9 @@ public class ImageSearch extends JFrame implements ActionListener {
 	}
 	
 	public TreeSet<ImageFile> getRank(ImageFile queryImage) {
+		boolean onlySiftSelected = (m_visualKeywordCheckBox.isSelected() && !m_colorHistogramCheckBox.isSelected() && !m_visualConceptCheckBox.isSelected() && !m_textCheckBox.isSelected());
+		boolean siftSelectedWithOthers = (m_visualKeywordCheckBox.isSelected() && !onlySiftSelected);
+		
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 			ImageFile currImage = entry.getValue();
@@ -457,35 +460,80 @@ public class ImageSearch extends JFrame implements ActionListener {
 		if (m_visualConceptCheckBox.isSelected())
 			VisualConcept.search(m_imageMap, queryImage);
 		
-		if (m_visualKeywordCheckBox.isSelected())
+		if (onlySiftSelected)
 			Sift.search(m_imageMap, queryImage);
 		
 		if (m_textCheckBox.isSelected())
 			Text.search(m_imageMap, queryImage);
 
+		TreeSet<ImageFile> firstResult = new TreeSet<ImageFile>(new ImageFileScoreComparator());
 		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
-		/* ranking the search results */
 		
-		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
-			ImageFile currImage = entry.getValue();
-			currImage.m_score = (double)weightColorHist*currImage.m_colorHistScore + 
-					(double)weightSemanticFeature*currImage.m_semanticFeatureScore + 
-					(double)weightVisualConcept*currImage.m_visualConceptVectorScore + 
-					(double)weightSift*currImage.m_siftScore + 
-					(double)weightText*currImage.m_textScore;
-			result.add(currImage);
-			if (result.size() > m_resultSize)
-				result.pollLast();
+		
+		if (siftSelectedWithOthers) {
+			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+				ImageFile currImage = entry.getValue();
+				currImage.m_score += (double)weightColorHist*currImage.m_colorHistScore + 
+						(double)weightSemanticFeature*currImage.m_semanticFeatureScore + 
+						(double)weightVisualConcept*currImage.m_visualConceptVectorScore + 
+						(double)weightText*currImage.m_textScore;
+				firstResult.add(currImage);
+				if (firstResult.size() > m_resultSize*2)
+					firstResult.pollLast();
+			}
+			
+			Sift.search(firstResult, queryImage);
+			
+			for (ImageFile currImage: firstResult) {
+				currImage.m_score += (double)weightSift*currImage.m_siftScore;
+				result.add(currImage);
+				if (result.size() > m_resultSize)
+					result.pollLast();
+			}
+		}
+		else {
+			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
+				ImageFile currImage = entry.getValue();
+				currImage.m_score = (double)weightColorHist*currImage.m_colorHistScore + 
+						(double)weightSemanticFeature*currImage.m_semanticFeatureScore + 
+						(double)weightVisualConcept*currImage.m_visualConceptVectorScore + 
+						(double)weightSift*currImage.m_siftScore + 
+						(double)weightText*currImage.m_textScore;
+				result.add(currImage);
+				if (result.size() > m_resultSize)
+					result.pollLast();
+			}
 		}
 		return result;
 		
 	}
 	
+	class Pair implements Comparable<Pair> {
+		String first;
+		String second;
+		Pair(String _first, String _second) {
+			first = _first;
+			second = _second;
+		}
+		
+		@Override
+		public int compareTo(Pair other) {
+			if (first.equals(other.first)){
+				return second.compareTo(other.second);
+			}
+			return first.compareTo(other.first);
+		}
+		
+		public boolean equals(Pair other) {
+			return (first.equals(other.first) && second.equals(other.second));
+		}
+	}
+	
 	private int weightColorHist = 1;
-	private int weightSemanticFeature = 1;
-	private int weightVisualConcept = 1;
+	private int weightSemanticFeature = 9;
+	private int weightVisualConcept = 10;
 	private int weightSift = 1;
-	private int weightText = 1;
+	private int weightText = 5;
 	private double bestMAP = 0;
 	private int bestWeightColorHist = 1;
 	private int bestWeightSemanticFeature = 1;
@@ -506,6 +554,90 @@ public class ImageSearch extends JFrame implements ActionListener {
 	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
 	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
 
+	private double runTestIR(boolean isScoreFromFile) {
+		
+		double totalPrecision = 0.0;
+		
+		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
+			ImageFile currImageTest = entry.getValue();
+			TreeSet<ImageFile> result;
+			if (isScoreFromFile)
+				result = getRankFromScoreFile(currImageTest);
+			else 
+				result = getRank(currImageTest);
+			
+			int numRetrieved = result.size();
+			int numRetrievedAndRelevant = 0;
+
+			for (ImageFile currResult : result) {
+				if (currResult.isRelevant(currImageTest)) {
+					numRetrievedAndRelevant++;
+				}
+			}
+			
+			double currPrecision = (double)numRetrievedAndRelevant / (double)numRetrieved;
+			totalPrecision += currPrecision;
+		}
+		
+		double meanAveragePrecision = totalPrecision/(double)m_imageTestMap.size();
+		
+		System.out.println("MAP  : " + meanAveragePrecision);
+		System.out.println();
+		
+		return meanAveragePrecision;
+	}
+	
+	private void runMultipleTests() {
+		readScore(m_colorHistScoreMap, s_colorHistScorePath);
+		readScore(m_semanticFeatureScoreMap, s_semanticFeatureScorePath);
+		readScore(m_visualConceptScoreMap, s_visualConceptScorePath);
+		readScore(m_siftScoreMap, s_siftScorePath);
+		readScore(m_textScoreMap, s_textScorePath);
+		
+		for(weightColorHist=0;weightColorHist<=maxWeight;weightColorHist++) {
+			for(weightSemanticFeature=0;weightSemanticFeature<=maxWeight;weightSemanticFeature++) {
+				for(weightVisualConcept=0;weightVisualConcept<=maxWeight;weightVisualConcept++) {
+					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
+						for(weightText=0;weightText<=maxWeight;weightText++) {
+							System.out.println(weightColorHist+"--"+weightSemanticFeature+"--"+weightVisualConcept+"--"+weightSift+"--"+weightText);
+							double currMAP = runTestIR(true);
+							if (currMAP > bestMAP) {
+								bestMAP = currMAP;
+								bestWeightColorHist = weightColorHist;
+								bestWeightSemanticFeature = weightSemanticFeature;
+								bestWeightVisualConcept = weightVisualConcept;
+								bestWeightSift = weightSift;
+								bestWeightText = weightText;
+								System.out.println("Current Best MAP : " + bestMAP);
+								System.out.println(bestWeightColorHist+"--"+bestWeightSemanticFeature+"--"+bestWeightVisualConcept+"--"+bestWeightSift+"--"+bestWeightText);
+								System.out.println();
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	void readScore(TreeMap<Pair,Double> scoreMap, String scoreFilePath) {
+		try {
+			scoreMap.clear();
+			Scanner cin = new Scanner(new File(scoreFilePath));
+			while (cin.hasNext()) {
+				String from = cin.next();
+				String to = cin.next();
+				Double score = cin.nextDouble();
+				Pair newPair = new Pair(from,to);
+				scoreMap.put(newPair, score);
+			}
+			cin.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	// Method only used to generate all possible similarity Matrix
 	public TreeSet<ImageFile> getRankWithOutput(ImageFile queryImage) {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
@@ -573,6 +705,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		
 	}
 	
+	// Method only used when finding the best weights by running test data against training data
 	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage) {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
@@ -602,148 +735,45 @@ public class ImageSearch extends JFrame implements ActionListener {
 		}
 		return result;
 	}
-	
+
+	// Deprecated, not used anymore, using MAP as evaluation measure instead (runTestIR)
+	@SuppressWarnings("unused")
 	private double runTestConfusionMatrix(boolean isScoreFromFile) {
-		int[] globalMatrix = new int[4];
-		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
-			ImageFile currImageTest = entry.getValue();
-			TreeSet<ImageFile> result;
-			if (isScoreFromFile)
-				result = getRankFromScoreFile(currImageTest);
-			else 
-				result = getRank(currImageTest);
+			int[] globalMatrix = new int[4];
+			for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
+				ImageFile currImageTest = entry.getValue();
+				TreeSet<ImageFile> result;
+				if (isScoreFromFile)
+					result = getRankFromScoreFile(currImageTest);
+				else 
+					result = getRank(currImageTest);
 
-			int[] localMatrix = new int[4];
-			for (ImageFile currResult : result) {
-				int[] matrix = new int[4];
-				currResult.getConfusionMatrix(currImageTest, matrix);
-				localMatrix[0] += matrix[0];
-				localMatrix[1] += matrix[1];
-				localMatrix[2] += matrix[2];
-				localMatrix[3] += matrix[3];
-			}
-			globalMatrix[0] += localMatrix[0];
-			globalMatrix[1] += localMatrix[1];
-			globalMatrix[2] += localMatrix[2];
-			globalMatrix[3] += localMatrix[3];
-		}
-		System.out.println("Final Result");
-		System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
-				+ " -- FN = " + globalMatrix[3]);
-		System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
-		System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
-		System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
-		System.out.println();
-		System.out.println();
-		
-		return GlobalHelper.getF1Score(globalMatrix);
-	}
-	
-	private double runTestIR(boolean isScoreFromFile) {
-		
-		double totalPrecision = 0.0;
-		
-		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
-			ImageFile currImageTest = entry.getValue();
-			TreeSet<ImageFile> result;
-			if (isScoreFromFile)
-				result = getRankFromScoreFile(currImageTest);
-			else 
-				result = getRank(currImageTest);
-			
-			int numRetrieved = result.size();
-			int numRetrievedAndRelevant = 0;
-
-			for (ImageFile currResult : result) {
-				if (currResult.isRelevant(currImageTest)) {
-					numRetrievedAndRelevant++;
+				int[] localMatrix = new int[4];
+				for (ImageFile currResult : result) {
+					int[] matrix = new int[4];
+					currResult.getConfusionMatrix(currImageTest, matrix);
+					localMatrix[0] += matrix[0];
+					localMatrix[1] += matrix[1];
+					localMatrix[2] += matrix[2];
+					localMatrix[3] += matrix[3];
 				}
+				globalMatrix[0] += localMatrix[0];
+				globalMatrix[1] += localMatrix[1];
+				globalMatrix[2] += localMatrix[2];
+				globalMatrix[3] += localMatrix[3];
 			}
+			System.out.println("Final Result");
+			System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
+					+ " -- FN = " + globalMatrix[3]);
+			System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
+			System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
+			System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
+			System.out.println();
+			System.out.println();
 			
-			double currPrecision = (double)numRetrievedAndRelevant / (double)numRetrieved;
-			totalPrecision += currPrecision;
+			return GlobalHelper.getF1Score(globalMatrix);
 		}
 		
-		double meanAveragePrecision = totalPrecision/(double)m_imageTestMap.size();
-		
-		System.out.println("MAP  : " + meanAveragePrecision);
-		System.out.println();
-		
-		return meanAveragePrecision;
-	}
-	
-	class Pair implements Comparable<Pair> {
-		String first;
-		String second;
-		Pair(String _first, String _second) {
-			first = _first;
-			second = _second;
-		}
-		
-		@Override
-		public int compareTo(Pair other) {
-			if (first.equals(other.first)){
-				return second.compareTo(other.second);
-			}
-			return first.compareTo(other.first);
-		}
-		
-		public boolean equals(Pair other) {
-			return (first.equals(other.first) && second.equals(other.second));
-		}
-	}
-	
-
-	void readScore(TreeMap<Pair,Double> scoreMap, String scoreFilePath) {
-		try {
-			scoreMap.clear();
-			Scanner cin = new Scanner(new File(scoreFilePath));
-			while (cin.hasNext()) {
-				String from = cin.next();
-				String to = cin.next();
-				Double score = cin.nextDouble();
-				Pair newPair = new Pair(from,to);
-				scoreMap.put(newPair, score);
-			}
-			cin.close();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void runMultipleTests() {
-		readScore(m_colorHistScoreMap, s_colorHistScorePath);
-		readScore(m_semanticFeatureScoreMap, s_semanticFeatureScorePath);
-		readScore(m_visualConceptScoreMap, s_visualConceptScorePath);
-		readScore(m_siftScoreMap, s_siftScorePath);
-		readScore(m_textScoreMap, s_textScorePath);
-		
-		for(weightColorHist=0;weightColorHist<=maxWeight;weightColorHist++) {
-			for(weightSemanticFeature=0;weightSemanticFeature<=maxWeight;weightSemanticFeature++) {
-				for(weightVisualConcept=0;weightVisualConcept<=maxWeight;weightVisualConcept++) {
-					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
-						for(weightText=0;weightText<=maxWeight;weightText++) {
-							System.out.println(weightColorHist+"--"+weightSemanticFeature+"--"+weightVisualConcept+"--"+weightSift+"--"+weightText);
-							double currMAP = runTestIR(true);
-							if (currMAP > bestMAP) {
-								bestMAP = currMAP;
-								bestWeightColorHist = weightColorHist;
-								bestWeightSemanticFeature = weightSemanticFeature;
-								bestWeightVisualConcept = weightVisualConcept;
-								bestWeightSift = weightSift;
-								bestWeightText = weightText;
-								System.out.println("Current Best MAP : " + bestMAP);
-								System.out.println(bestWeightColorHist+"--"+bestWeightSemanticFeature+"--"+bestWeightVisualConcept+"--"+bestWeightSift+"--"+bestWeightText);
-								System.out.println();
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	public static void main(String[] args) {
 		@SuppressWarnings("unused")
 		ImageSearch example = new ImageSearch();
