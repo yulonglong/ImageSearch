@@ -117,6 +117,11 @@ public class GlobalHelper {
 		double ans = 2.0 * (double) tp / (2.0 * (double) tp + (double) fp + (double) fn);
 		return ans;
 	}
+	
+	public static double getF1Score(double precision, double recall) {
+		if ((precision < 0.0000000001) && (precision < 0.0000000001)) return 0.0;
+		return (2.0*precision*recall)/(precision+recall);
+	}
 
 	/** Returns an ImageIcon, or null if the path was invalid. */
 	public static ImageIcon createImageIcon(String path) {

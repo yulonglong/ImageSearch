@@ -534,7 +534,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	private int weightVisualConcept = 10;
 	private int weightSift = 1;
 	private int weightText = 5;
-	private double bestMAP = 0;
+	private double bestF1 = 0;
 	private int bestWeightColorHist = 1;
 	private int bestWeightSemanticFeature = 1;
 	private int bestWeightVisualConcept = 1;
@@ -555,8 +555,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
 
 	private double runTestIR(boolean isScoreFromFile) {
-		
-		double totalPrecision = 0.0;
+		double totalF1 = 0.0;
 		
 		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
 			ImageFile currImageTest = entry.getValue();
@@ -568,6 +567,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			
 			int numRetrieved = result.size();
 			int numRetrievedAndRelevant = 0;
+			int numRelevant = 0;
 
 			for (ImageFile currResult : result) {
 				if (currResult.isRelevant(currImageTest)) {
@@ -575,16 +575,28 @@ public class ImageSearch extends JFrame implements ActionListener {
 				}
 			}
 			
+			for (Map.Entry<String, ImageFile> innerEntry : m_imageMap.entrySet()) {
+				ImageFile currImage = innerEntry.getValue();
+				if (currImage.isRelevant(currImageTest)) {
+					numRelevant++;
+				}
+			}
+			
 			double currPrecision = (double)numRetrievedAndRelevant / (double)numRetrieved;
-			totalPrecision += currPrecision;
+			double currRecall = (double)numRetrievedAndRelevant / (double) numRelevant;
+			totalF1 += GlobalHelper.getF1Score(currPrecision, currRecall);
 		}
 		
-		double meanAveragePrecision = totalPrecision/(double)m_imageTestMap.size();
+		double meanF1 = totalF1/(double)m_imageTestMap.size();
 		
-		System.out.println("MAP  : " + meanAveragePrecision);
+		System.out.println("mean-F1  : " + meanF1);
 		System.out.println();
 		
-		return meanAveragePrecision;
+		return meanF1;
+	}
+	
+	class Gene {
+		
 	}
 	
 	private void runMultipleTests() {
@@ -600,15 +612,15 @@ public class ImageSearch extends JFrame implements ActionListener {
 					for(weightSift=0;weightSift<=maxWeight;weightSift++) {
 						for(weightText=0;weightText<=maxWeight;weightText++) {
 							System.out.println(weightColorHist+"--"+weightSemanticFeature+"--"+weightVisualConcept+"--"+weightSift+"--"+weightText);
-							double currMAP = runTestIR(true);
-							if (currMAP > bestMAP) {
-								bestMAP = currMAP;
+							double currF1 = runTestIR(true);
+							if (currF1 > bestF1) {
+								bestF1 = currF1;
 								bestWeightColorHist = weightColorHist;
 								bestWeightSemanticFeature = weightSemanticFeature;
 								bestWeightVisualConcept = weightVisualConcept;
 								bestWeightSift = weightSift;
 								bestWeightText = weightText;
-								System.out.println("Current Best MAP : " + bestMAP);
+								System.out.println("Current Best F1 : " + bestF1);
 								System.out.println(bestWeightColorHist+"--"+bestWeightSemanticFeature+"--"+bestWeightVisualConcept+"--"+bestWeightSift+"--"+bestWeightText);
 								System.out.println();
 							}
