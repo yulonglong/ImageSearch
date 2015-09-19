@@ -21,11 +21,11 @@ public class ImageSearch extends JFrame implements ActionListener {
 	BufferedImage m_queryImage = null;
 	File m_queryFile;
 	
-	int m_windowWidth = 1600;
+	int m_windowWidth = 1440;
 	int m_windowHeight = 900;
 	int m_resultSize = 20; // size of the searching result
 
-	static String s_mainDatapath = "D:\\GitHub\\ImageSearchFull\\MainDirectory\\";
+	static String s_mainDatapath = "D:\\GitHub\\ImageSearchData\\";
 	static String s_siftPath = s_mainDatapath + "FeatureExtractor\\siftDemoV4\\";
 	
 	String m_semanticFeaturePath = s_mainDatapath + "FeatureExtractor\\semanticFeature\\";
