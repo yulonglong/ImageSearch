@@ -7,29 +7,12 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.TreeMap;
-import java.util.TreeSet;
+
+import java.io.*;
+import java.util.*;
 
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
@@ -46,7 +29,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 	int m_windowWidth = 1440;
 	int m_windowHeight = 900;
-	int m_resultSize = 20; // size of the searching result
+	static int s_resultSize = 20; // size of the searching result
 
 	static String s_mainDatapath = "D:\\GitHub\\ImageSearchData\\";
 	//static String s_mainDatapath = "C:\\Users\\Ian\\WorkspaceGeneral\\ImageSearchData\\";
@@ -73,7 +56,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 	JButton m_openButton, m_searchButton, m_testButton, m_multipleTestButton, m_testGAButton;
 
-	JLabel[] m_imageLabels = new JLabel[m_resultSize];
+	JLabel[] m_imageLabels = new JLabel[s_resultSize];
 	JLabel m_queryImageLabel = new JLabel();
 	JTextField m_queryDescription = new JTextField(20);
 
@@ -513,7 +496,8 @@ public class ImageSearch extends JFrame implements ActionListener {
 			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_testGAButton) {
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			runGA();
+			GeneticAlgorithm ga = new GeneticAlgorithm(m_imageMap,m_imageTestMap);
+			ga.runGA();
 			setCursor(Cursor.getDefaultCursor());
 		}
 	}
@@ -587,7 +571,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
 						+ m_weightText * currImage.m_textScore;
 				firstResult.add(currImage);
-				if (firstResult.size() > m_resultSize * 2)
+				if (firstResult.size() > s_resultSize * 2)
 					firstResult.pollLast();
 			}
 
@@ -596,7 +580,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			for (ImageFile currImage : firstResult) {
 				currImage.m_score += m_weightSift * currImage.m_siftScore;
 				result.add(currImage);
-				if (result.size() > m_resultSize)
+				if (result.size() > s_resultSize)
 					result.pollLast();
 			}
 		} else {
@@ -607,34 +591,12 @@ public class ImageSearch extends JFrame implements ActionListener {
 						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
 						+ m_weightSift * currImage.m_siftScore + m_weightText * currImage.m_textScore;
 				result.add(currImage);
-				if (result.size() > m_resultSize)
+				if (result.size() > s_resultSize)
 					result.pollLast();
 			}
 		}
 		return result;
 
-	}
-
-	class Pair implements Comparable<Pair> {
-		String first;
-		String second;
-
-		Pair(String _first, String _second) {
-			first = _first;
-			second = _second;
-		}
-
-		@Override
-		public int compareTo(Pair other) {
-			if (first.equals(other.first)) {
-				return second.compareTo(other.second);
-			}
-			return first.compareTo(other.first);
-		}
-
-		public boolean equals(Pair other) {
-			return (first.equals(other.first) && second.equals(other.second));
-		}
 	}
 
 	private int m_weightColorHist = 1;
@@ -650,12 +612,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	private int bestWeightText = 1;
 	private int maxWeight = 10;
 
-	// For GA
-	private int bestNGenes = 5;
-	private double rangeMin = 0;
-	private double rangeMax = 1000;
-	private int maxGenerations = 1000000;
-	private double mutationChance = 0.25;
+
 
 	TreeMap<Pair, Double> m_colorHistScoreMap = new TreeMap<Pair, Double>();
 	TreeMap<Pair, Double> m_semanticFeatureScoreMap = new TreeMap<Pair, Double>();
@@ -709,185 +666,23 @@ public class ImageSearch extends JFrame implements ActionListener {
 		System.out.println();
 
 		return meanF1;
-	}
+	}	
+	
 
-	class Gene {
-		double[] w = new double[5];
-		double f1score;
-
-		Gene() {
-			f1score = 0.0;
-			w[0] = w[2] = w[3] = w[4] = w[5] = 1.0;
-		}
-
-		Gene(double _w1, double _w2, double _w3, double _w4, double _w5) {
-			w[0] = _w1;
-			w[1] = _w2;
-			w[2] = _w3;
-			w[3] = _w4;
-			w[4] = _w5;
-		}
-	}
-
-	class GeneComparator implements Comparator<Gene> {
-		@Override
-		public int compare(Gene o1, Gene o2) {
-			if (o1.f1score == o2.f1score)
-				return 0;
-			else if (o1.f1score < o2.f1score)
-				return 1;
-			else
-				return -1;
-		}
-	}
-
-	private double runTestGA(Gene gene) {
-		double totalF1 = 0.0;
-
-		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
-			ImageFile currImageTest = entry.getValue();
-			TreeSet<ImageFile> result;
-			result = getRankFromScoreFile(currImageTest, gene.w[0], gene.w[1], gene.w[2], gene.w[3], gene.w[4]);
-
-			int numRetrieved = result.size();
-			int numRetrievedAndRelevant = 0;
-			int numRelevant = 0;
-
-			for (ImageFile currResult : result) {
-				if (currResult.isRelevant(currImageTest)) {
-					numRetrievedAndRelevant++;
-				}
+	void readScore(TreeMap<Pair, Double> scoreMap, String scoreFilePath) {
+		try {
+			scoreMap.clear();
+			Scanner cin = new Scanner(new File(scoreFilePath));
+			while (cin.hasNext()) {
+				String from = cin.next();
+				String to = cin.next();
+				Double score = cin.nextDouble();
+				Pair newPair = new Pair(from, to);
+				scoreMap.put(newPair, score);
 			}
-
-			for (Map.Entry<String, ImageFile> innerEntry : m_imageMap.entrySet()) {
-				ImageFile currImage = innerEntry.getValue();
-				if (currImage.isRelevant(currImageTest)) {
-					numRelevant++;
-				}
-			}
-
-			double currPrecision = (double) numRetrievedAndRelevant / (double) numRetrieved;
-			double currRecall = (double) numRetrievedAndRelevant / (double) numRelevant;
-			totalF1 += GlobalHelper.getF1Score(currPrecision, currRecall);
-		}
-
-		double meanF1 = totalF1 / m_imageTestMap.size();
-
-		gene.f1score = meanF1;
-
-		return meanF1;
-	}
-
-	public void generateRandomGenes(ArrayList<Gene> geneList) {
-		Random random = new Random();
-		for (int j = 0; j < bestNGenes; j++) {
-			double[] value = new double[5];
-			for (int i = 0; i < 5; i++) {
-				value[i] = rangeMin + (rangeMax - rangeMin) * random.nextDouble();
-			}
-			Gene gene = new Gene(value[0], value[1], value[2], value[3], value[4]);
-			geneList.add(gene);
-		}
-	}
-
-	private Gene generateOffspring(Gene gene1, Gene gene2) {
-		Random randomCrossover = new Random();
-		Random randomMutation = new Random();
-		Random randomPositiveMutation = new Random();
-		Random randomValue = new Random();
-		double[] value = new double[5];
-		for (int i = 0; i < 5; i++) {
-
-			// Crossover
-			if (randomCrossover.nextDouble() < 0.5) {
-				value[i] = gene1.w[i];
-			} else {
-				value[i] = gene2.w[i];
-			}
-
-			// Mutation
-			double randMutation = randomMutation.nextDouble();
-			double randPositive = randomPositiveMutation.nextDouble();
-			double randValue = randomValue.nextDouble();
-			if (randMutation < mutationChance / 4.0) {
-				if (randPositive < 0.5) {
-					value[i] = value[i] + (randValue * 100) + 1;
-				} else {
-					value[i] = value[i] - (randValue * 100) + 1;
-				}
-			} else if (randMutation < mutationChance / 2.0) {
-				if (randPositive < 0.5) {
-					value[i] = value[i] + (randValue * 10) + 1;
-				} else {
-					value[i] = value[i] - (randValue * 10) + 1;
-				}
-			} else if (randMutation < mutationChance) {
-				if (randPositive < 0.5) {
-					value[i] = value[i] + (randValue * 2);
-				} else {
-					value[i] = value[i] - (randValue * 2);
-				}
-			}
-			// Make sure attributes have proper signs
-			if (((i < 6) || (i == 11)) && value[i] < 0) {
-				value[i] = -1 * value[i];
-			} else if (((i >= 6) && (i <= 10)) && value[i] > 0) {
-				value[i] = -1 * value[i];
-			}
-		}
-		Gene offspring = new Gene(value[0], value[1], value[2], value[3], value[4]);
-		return offspring;
-	}
-
-	public void generateNewGenes(ArrayList<Gene> geneList) {
-		ArrayList<Gene> tempGeneList = new ArrayList<Gene>();
-		for (Gene gene : geneList) {
-			tempGeneList.add(gene);
-		}
-		geneList.clear();
-
-		for (int i = 0; i < bestNGenes - 1; i++) {
-			for (int j = i + 1; j < bestNGenes; j++) {
-				Gene offSpring = generateOffspring(tempGeneList.get(i), tempGeneList.get(j));
-				geneList.add(offSpring);
-			}
-		}
-		for (int i = 0; i < bestNGenes; i++) {
-			Gene fittestGene = tempGeneList.get(i);
-			geneList.add(fittestGene);
-		}
-		tempGeneList.clear();
-	}
-
-	private void runGA() {
-		readScore(m_colorHistScoreMap, s_colorHistScorePath);
-		readScore(m_semanticFeatureScoreMap, s_semanticFeatureScorePath);
-		readScore(m_visualConceptScoreMap, s_visualConceptScorePath);
-		readScore(m_siftScoreMap, s_siftScorePath);
-		readScore(m_textScoreMap, s_textScorePath);
-
-		ArrayList<Gene> geneList = new ArrayList<Gene>();
-
-		generateRandomGenes(geneList);
-		for (int i = 0; i < maxGenerations; i++) {
-			System.out.println("--------- Generation " + i + " ----------");
-			System.err.println("--------- Generation " + i + " ----------");
-			generateNewGenes(geneList);
-			generateRandomGenes(geneList);
-			for (Gene currGene : geneList) {
-				currGene.f1score = runTestGA(currGene);
-				System.out.println(currGene.w[0] + "--" + currGene.w[1] + "--" + currGene.w[2] + "--" + currGene.w[3]
-						+ "--" + currGene.w[4]);
-				System.out.println("Mean f1-Score : " + currGene.f1score);
-
-			}
-			geneList.sort(new GeneComparator());
-			for (int z = 0; z < bestNGenes; z++) {
-				Gene currGene = geneList.get(z);
-				System.err.println(currGene.w[0] + "--" + currGene.w[1] + "--" + currGene.w[2] + "--" + currGene.w[3]
-						+ "--" + currGene.w[4]);
-				System.err.println("Mean f1-Score : " + currGene.f1score);
-			}
+			cin.close();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -925,23 +720,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		}
 	}
 
-	void readScore(TreeMap<Pair, Double> scoreMap, String scoreFilePath) {
-		try {
-			scoreMap.clear();
-			Scanner cin = new Scanner(new File(scoreFilePath));
-			while (cin.hasNext()) {
-				String from = cin.next();
-				String to = cin.next();
-				Double score = cin.nextDouble();
-				Pair newPair = new Pair(from, to);
-				scoreMap.put(newPair, score);
-			}
-			cin.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
+	// Unused
 	// Method only used to generate all possible similarity Matrix
 	public TreeSet<ImageFile> getRankWithOutput(ImageFile queryImage) {
 		// Reset all scores
@@ -979,7 +758,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
 						+ m_weightSift * currImage.m_siftScore + m_weightText * currImage.m_textScore;
 				result.add(currImage);
-				if (result.size() > m_resultSize)
+				if (result.size() > s_resultSize)
 					result.pollLast();
 
 				pw1.println(queryImage.m_name + " " + currImage.m_name + " " + currImage.m_colorHistScore);
@@ -1005,11 +784,9 @@ public class ImageSearch extends JFrame implements ActionListener {
 		}
 
 		return result;
-
 	}
 
-	// Method only used when finding the best weights by running test data
-	// against training data
+	// Duplicated method to GeneticAlgorithm class, please be aware when changing this method
 	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage, double weightColorHist,
 			double weightSemanticFeature, double weightVisualConcept, double weightSift, double weightText) {
 		// Reset all scores
@@ -1034,50 +811,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 					+ weightVisualConcept * visualConceptScore + weightSift * siftScore
 					+ weightText * textScore;
 			result.add(currImage);
-			if (result.size() > m_resultSize)
+			if (result.size() > s_resultSize)
 				result.pollLast();
 		}
 		return result;
-	}
-
-	// Deprecated, not used anymore, using MAP as evaluation measure instead
-	// (runTestIR)
-	@SuppressWarnings("unused")
-	private double runTestConfusionMatrix(boolean isScoreFromFile) {
-		int[] globalMatrix = new int[4];
-		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
-			ImageFile currImageTest = entry.getValue();
-			TreeSet<ImageFile> result;
-			if (isScoreFromFile)
-				result = getRankFromScoreFile(currImageTest, m_weightColorHist, m_weightSemanticFeature,
-						m_weightVisualConcept, m_weightSift, m_weightText);
-			else
-				result = getRank(currImageTest);
-
-			int[] localMatrix = new int[4];
-			for (ImageFile currResult : result) {
-				int[] matrix = new int[4];
-				currResult.getConfusionMatrix(currImageTest, matrix);
-				localMatrix[0] += matrix[0];
-				localMatrix[1] += matrix[1];
-				localMatrix[2] += matrix[2];
-				localMatrix[3] += matrix[3];
-			}
-			globalMatrix[0] += localMatrix[0];
-			globalMatrix[1] += localMatrix[1];
-			globalMatrix[2] += localMatrix[2];
-			globalMatrix[3] += localMatrix[3];
-		}
-		System.out.println("Final Result");
-		System.out.println("TP = " + globalMatrix[0] + " -- TN = " + globalMatrix[1] + " -- FP = " + globalMatrix[2]
-				+ " -- FN = " + globalMatrix[3]);
-		System.out.println("Recall    : " + GlobalHelper.getRecall(globalMatrix));
-		System.out.println("Precision : " + GlobalHelper.getPrecision(globalMatrix));
-		System.out.println("F1-Score  : " + GlobalHelper.getF1Score(globalMatrix));
-		System.out.println();
-		System.out.println();
-
-		return GlobalHelper.getF1Score(globalMatrix);
 	}
 
 	public static void main(String[] args) {
