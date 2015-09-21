@@ -25,7 +25,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 	JLabel[] m_imageLabels = new JLabel[s_resultSize];
 	JLabel m_queryImageLabel = new JLabel();
-	JTextField m_queryDescription = new JTextField(20);
+	JTextField m_queryDescription = new JTextField(40);
 
 	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
 	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
@@ -34,10 +34,9 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 	JProgressBar m_progressBar = new JProgressBar();
 	
-	int m_windowWidth = 1440;
-	int m_windowHeight = 900;
+	int m_windowWidth = 1366;
+	int m_windowHeight = 768;
 	// End Java UI related attributes
-
 	
 	// Start various data path
 	static String s_mainDatapath = "D:\\GitHub\\ImageSearchData\\";
@@ -497,7 +496,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			for (ImageFile currResult : m_result) {
 				m_imageLabels[m_imageLabelsIndex].setIcon(new ImageIcon(currResult.m_bufferedImage));
 				m_imageLabels[m_imageLabelsIndex].setText(m_invCategoryMap.get(currResult.m_category.first()) + " - "
-						+ m_invCategoryMap.get(currResult.m_category.last()) + currResult.m_name);
+						+ m_invCategoryMap.get(currResult.m_category.last()) + "-" + currResult.m_name);
 				m_imageLabelsIndex++;
 			}
 			setCursor(Cursor.getDefaultCursor());
@@ -528,21 +527,21 @@ public class ImageSearch extends JFrame implements ActionListener {
 					}
 					
 				}
-				for(String queryTextDesc: m_queryImageFile.m_description) {
-					boolean exists = false;
-					for(String currTextDesc: currImage.m_description) {
-						if (currTextDesc.contains(queryTextDesc)) {
-							if (!isPositive) {
-								currImage.m_description.remove(currTextDesc);
-							}
-							exists = true;
-							break;
-						}
-					}
-					if ((!exists) && (isPositive)){
-						currImage.m_description.add(queryTextDesc);
-					}
-				}
+//				for(String queryTextDesc: m_queryImageFile.m_description) {
+//					boolean exists = false;
+//					for(String currTextDesc: currImage.m_description) {
+//						if (currTextDesc.contains(queryTextDesc)) {
+//							if (!isPositive) {
+//								currImage.m_description.remove(currTextDesc);
+//							}
+//							exists = true;
+//							break;
+//						}
+//					}
+//					if ((!exists) && (isPositive)){
+//						currImage.m_description.add(queryTextDesc);
+//					}
+//				}
 			}
 			currIndex++;
 		}
