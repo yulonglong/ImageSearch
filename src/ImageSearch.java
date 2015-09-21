@@ -29,6 +29,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
@@ -88,6 +89,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	TreeMap<String, ImageFile> m_imageMap = new TreeMap<String, ImageFile>();
 	TreeMap<String, ImageFile> m_imageTestMap = new TreeMap<String, ImageFile>();
 	static TreeMap<Integer, ArrayList<Integer>> s_semanticFeatureMap = new TreeMap<Integer, ArrayList<Integer>>();
+	TreeSet<ImageFile> m_result = new TreeSet<ImageFile>();
 
 	private void loadTrainingData() {
 		// Begin Reading Image Category
@@ -380,8 +382,14 @@ public class ImageSearch extends JFrame implements ActionListener {
 			m_imageLabels[i].addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent e) {
-
-					System.err.println("The label, using variable j is: " + j);
+					if (SwingUtilities.isLeftMouseButton(e)) {
+						relevanceFeedback(j, true);
+						System.out.println("Positive relevance feedback at index " + j);
+					}
+					if (SwingUtilities.isRightMouseButton(e)) {
+						relevanceFeedback(j, false);
+						System.out.println("Negative relevance feedback at index " + j);
+					}
 
 					// Code below here is for feedback that the image is clicked on.
 					m_imageLabels[j].setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -449,6 +457,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 
 			if (m_queryFile != null) {
+				setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 				try {
 					String queryFileName = m_queryFile.toString();
 					queryFileName = queryFileName.replaceAll("\\\\", "\\\\\\\\");
@@ -477,26 +486,70 @@ public class ImageSearch extends JFrame implements ActionListener {
 					querySemanticFile.delete();
 				} catch (Exception e1) {
 				}
+				setCursor(Cursor.getDefaultCursor());
 			}
 
 			m_fc.setSelectedFile(null);
 		} else if (e.getSource() == m_searchButton) {
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			m_queryImageFile.updateDescription(m_queryDescription.getText());
-			TreeSet<ImageFile> result = getRank(m_queryImageFile);
+			m_result = getRank(m_queryImageFile);
 
 			int m_imageLabelsIndex = 0;
-			for (ImageFile currResult : result) {
+			for (ImageFile currResult : m_result) {
 				m_imageLabels[m_imageLabelsIndex].setIcon(new ImageIcon(currResult.m_bufferedImage));
 				m_imageLabels[m_imageLabelsIndex].setText(m_invCategoryMap.get(currResult.m_category.first()) + " - "
 						+ m_invCategoryMap.get(currResult.m_category.last()) + currResult.m_name);
 				m_imageLabelsIndex++;
 			}
+			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_testButton) {
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			runTestIR(false);
+			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_multipleTestButton) {
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			runMultipleTests();
+			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_testGAButton) {
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			runGA();
+			setCursor(Cursor.getDefaultCursor());
+		}
+	}
+	
+	private void relevanceFeedback(int index, boolean isPositive) {
+		int currIndex = 0;
+		for(ImageFile currImage: m_result) {
+			if (currIndex == index) {
+				for(int i=0;i<1000;i++){
+					if (isPositive) {
+						currImage.m_visualConceptVector[i] += m_queryImageFile.m_visualConceptVector[i]*0.1;
+						if (currImage.m_visualConceptVector[i] > 1.0) currImage.m_visualConceptVector[i] = 1.0;
+					}
+					else {
+						currImage.m_visualConceptVector[i] -= m_queryImageFile.m_visualConceptVector[i]*0.1;
+						if (currImage.m_visualConceptVector[i] < 0.0) currImage.m_visualConceptVector[i] = 0.0;
+					}
+					
+				}
+				for(String queryTextDesc: m_queryImageFile.m_description) {
+					boolean exists = false;
+					for(String currTextDesc: currImage.m_description) {
+						if (currTextDesc.contains(queryTextDesc)) {
+							if (!isPositive) {
+								currImage.m_description.remove(currTextDesc);
+							}
+							exists = true;
+							break;
+						}
+					}
+					if ((!exists) && (isPositive)){
+						currImage.m_description.add(queryTextDesc);
+					}
+				}
+			}
+			currIndex++;
 		}
 	}
 
