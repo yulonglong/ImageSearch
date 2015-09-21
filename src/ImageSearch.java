@@ -1,12 +1,34 @@
 
-import java.io.*;
-import java.util.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextField;
 
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
@@ -26,6 +48,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 	int m_resultSize = 20; // size of the searching result
 
 	static String s_mainDatapath = "D:\\GitHub\\ImageSearchData\\";
+	//static String s_mainDatapath = "C:\\Users\\Ian\\WorkspaceGeneral\\ImageSearchData\\";
 	static String s_siftPath = s_mainDatapath + "FeatureExtractor\\siftDemoV4\\";
 
 	String m_semanticFeaturePath = s_mainDatapath + "FeatureExtractor\\semanticFeature\\";
@@ -352,6 +375,34 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		for (int i = 0; i < m_imageLabels.length; i++) {
 			m_imageLabels[i] = new JLabel();
+
+			final int j = i;
+			m_imageLabels[i].addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent e) {
+
+					System.err.println("The label, using variable j is: " + j);
+
+					// Code below here is for feedback that the image is clicked on.
+					m_imageLabels[j].setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+					try {
+						Thread.sleep(500);
+					} catch(InterruptedException ex) {
+						Thread.currentThread().interrupt();
+					} finally {
+						m_imageLabels[j].setCursor(Cursor.getDefaultCursor());
+					}
+				}
+				@Override
+				public void mouseEntered(MouseEvent e) {
+					m_imageLabels[j].setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+				}
+				@Override
+				public void mouseExited(MouseEvent e) {
+					m_imageLabels[j].setCursor(Cursor.getDefaultCursor());
+				}
+			});
+
 			m_imageLabels[i].setHorizontalTextPosition(JLabel.CENTER);
 			m_imageLabels[i].setVerticalTextPosition(JLabel.BOTTOM);
 			imagePanel.add(m_imageLabels[i]);
@@ -370,6 +421,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 		// add(logScrollPane, BorderLayout.CENTER);
 	}
 
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		// Set up the file chooser.
 		if (e.getSource() == m_openButton) {
@@ -477,10 +529,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 		if (siftSelectedWithOthers) {
 			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 				ImageFile currImage = entry.getValue();
-				currImage.m_score += (double) m_weightColorHist * currImage.m_colorHistScore
-						+ (double) m_weightSemanticFeature * currImage.m_semanticFeatureScore
-						+ (double) m_weightVisualConcept * currImage.m_visualConceptVectorScore
-						+ (double) m_weightText * currImage.m_textScore;
+				currImage.m_score += m_weightColorHist * currImage.m_colorHistScore
+						+ m_weightSemanticFeature * currImage.m_semanticFeatureScore
+						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
+						+ m_weightText * currImage.m_textScore;
 				firstResult.add(currImage);
 				if (firstResult.size() > m_resultSize * 2)
 					firstResult.pollLast();
@@ -489,7 +541,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			Sift.search(firstResult, queryImage);
 
 			for (ImageFile currImage : firstResult) {
-				currImage.m_score += (double) m_weightSift * currImage.m_siftScore;
+				currImage.m_score += m_weightSift * currImage.m_siftScore;
 				result.add(currImage);
 				if (result.size() > m_resultSize)
 					result.pollLast();
@@ -497,10 +549,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 		} else {
 			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 				ImageFile currImage = entry.getValue();
-				currImage.m_score = (double) m_weightColorHist * currImage.m_colorHistScore
-						+ (double) m_weightSemanticFeature * currImage.m_semanticFeatureScore
-						+ (double) m_weightVisualConcept * currImage.m_visualConceptVectorScore
-						+ (double) m_weightSift * currImage.m_siftScore + (double) m_weightText * currImage.m_textScore;
+				currImage.m_score = m_weightColorHist * currImage.m_colorHistScore
+						+ m_weightSemanticFeature * currImage.m_semanticFeatureScore
+						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
+						+ m_weightSift * currImage.m_siftScore + m_weightText * currImage.m_textScore;
 				result.add(currImage);
 				if (result.size() > m_resultSize)
 					result.pollLast();
@@ -598,7 +650,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			totalF1 += GlobalHelper.getF1Score(currPrecision, currRecall);
 		}
 
-		double meanF1 = totalF1 / (double) m_imageTestMap.size();
+		double meanF1 = totalF1 / m_imageTestMap.size();
 
 		System.out.println("mean-F1  : " + meanF1);
 		System.out.println();
@@ -666,7 +718,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			totalF1 += GlobalHelper.getF1Score(currPrecision, currRecall);
 		}
 
-		double meanF1 = totalF1 / (double) m_imageTestMap.size();
+		double meanF1 = totalF1 / m_imageTestMap.size();
 
 		gene.f1score = meanF1;
 
@@ -869,10 +921,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 			for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
 				ImageFile currImage = entry.getValue();
-				currImage.m_score = (double) m_weightColorHist * currImage.m_colorHistScore
-						+ (double) m_weightSemanticFeature * currImage.m_semanticFeatureScore
-						+ (double) m_weightVisualConcept * currImage.m_visualConceptVectorScore
-						+ (double) m_weightSift * currImage.m_siftScore + (double) m_weightText * currImage.m_textScore;
+				currImage.m_score = m_weightColorHist * currImage.m_colorHistScore
+						+ m_weightSemanticFeature * currImage.m_semanticFeatureScore
+						+ m_weightVisualConcept * currImage.m_visualConceptVectorScore
+						+ m_weightSift * currImage.m_siftScore + m_weightText * currImage.m_textScore;
 				result.add(currImage);
 				if (result.size() > m_resultSize)
 					result.pollLast();
@@ -924,10 +976,10 @@ public class ImageSearch extends JFrame implements ActionListener {
 			Double siftScore = m_siftScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
 			Double textScore = m_textScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
 
-			currImage.m_score = (double) weightColorHist * colorHistScore
-					+ (double) weightSemanticFeature * semanticFeatureScore
-					+ (double) weightVisualConcept * visualConceptScore + (double) weightSift * siftScore
-					+ (double) weightText * textScore;
+			currImage.m_score = weightColorHist * colorHistScore
+					+ weightSemanticFeature * semanticFeatureScore
+					+ weightVisualConcept * visualConceptScore + weightSift * siftScore
+					+ weightText * textScore;
 			result.add(currImage);
 			if (result.size() > m_resultSize)
 				result.pollLast();
