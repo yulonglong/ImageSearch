@@ -60,7 +60,6 @@ public class GeneticAlgorithm {
 		m_imageTestMap = imageTestMap;
 	}
 	
-	// Duplicated method from ImageSearch class, please be aware when changing this method
 	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage, double weightColorHist,
 			double weightSemanticFeature, double weightVisualConcept, double weightSift, double weightText) {
 		// Reset all scores

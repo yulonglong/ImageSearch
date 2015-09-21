@@ -16,21 +16,30 @@ import javax.swing.*;
 
 public class ImageSearch extends JFrame implements ActionListener {
 	static final long serialVersionUID = 42L;
-	final static int s_totalCategoryNum = 25;
 
-	final static boolean s_enableColorHistCache = false;
-
+	// Start Java UI related attributes
 	JFileChooser m_fc;
 	JPanel m_contentPane;
 
-	ImageFile m_queryImageFile = null;
-	BufferedImage m_queryImage = null;
-	File m_queryFile;
+	JButton m_openButton, m_searchButton, m_testButton, m_testGAButton;
 
+	JLabel[] m_imageLabels = new JLabel[s_resultSize];
+	JLabel m_queryImageLabel = new JLabel();
+	JTextField m_queryDescription = new JTextField(20);
+
+	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
+	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
+	JCheckBox m_visualKeywordCheckBox = new JCheckBox("Visual Keywords");
+	JCheckBox m_textCheckBox = new JCheckBox("Text");
+
+	JProgressBar m_progressBar = new JProgressBar();
+	
 	int m_windowWidth = 1440;
 	int m_windowHeight = 900;
-	static int s_resultSize = 20; // size of the searching result
+	// End Java UI related attributes
 
+	
+	// Start various data path
 	static String s_mainDatapath = "D:\\GitHub\\ImageSearchData\\";
 	//static String s_mainDatapath = "C:\\Users\\Ian\\WorkspaceGeneral\\ImageSearchData\\";
 	static String s_siftPath = s_mainDatapath + "FeatureExtractor\\siftDemoV4\\";
@@ -54,25 +63,35 @@ public class ImageSearch extends JFrame implements ActionListener {
 	String m_imageTestDescriptionPath = s_mainDatapath + "ImageData\\test\\test_tags.txt";
 	String m_testGroundTruthPath = s_mainDatapath + "Groundtruth\\test\\";
 
-	JButton m_openButton, m_searchButton, m_testButton, m_multipleTestButton, m_testGAButton;
-
-	JLabel[] m_imageLabels = new JLabel[s_resultSize];
-	JLabel m_queryImageLabel = new JLabel();
-	JTextField m_queryDescription = new JTextField(20);
-
-	JCheckBox m_colorHistogramCheckBox = new JCheckBox("Color Histogram");
-	JCheckBox m_visualConceptCheckBox = new JCheckBox("Visual Concept");
-	JCheckBox m_visualKeywordCheckBox = new JCheckBox("Visual Keywords");
-	JCheckBox m_textCheckBox = new JCheckBox("Text");
-
-	JProgressBar m_progressBar = new JProgressBar();
-
+	static String s_colorHistScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\ColorHist.txt";
+	static String s_semanticFeatureScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\SemanticFeature.txt";
+	static String s_visualConceptScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\VisualConcept.txt";
+	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
+	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
+	// End various data path
+	
+	
+	final static int s_totalCategoryNum = 25;
+	final static boolean s_enableColorHistCache = false;
+	static int s_resultSize = 20; // size of the searching result
+	
 	TreeMap<String, Integer> m_categoryMap = new TreeMap<String, Integer>();
 	TreeMap<Integer, String> m_invCategoryMap = new TreeMap<Integer, String>();
 	TreeMap<String, ImageFile> m_imageMap = new TreeMap<String, ImageFile>();
 	TreeMap<String, ImageFile> m_imageTestMap = new TreeMap<String, ImageFile>();
 	static TreeMap<Integer, ArrayList<Integer>> s_semanticFeatureMap = new TreeMap<Integer, ArrayList<Integer>>();
 	TreeSet<ImageFile> m_result = new TreeSet<ImageFile>();
+	
+	ImageFile m_queryImageFile = null;
+	BufferedImage m_queryImage = null;
+	File m_queryFile;
+	
+	private int m_weightColorHist = 1;
+	private int m_weightSemanticFeature = 9;
+	private int m_weightVisualConcept = 10;
+	private int m_weightSift = 1;
+	private int m_weightText = 5;
+
 
 	private void loadTrainingData() {
 		// Begin Reading Image Category
@@ -332,9 +351,6 @@ public class ImageSearch extends JFrame implements ActionListener {
 		m_testButton = new JButton("Run Test");
 		m_testButton.addActionListener(this);
 
-		m_multipleTestButton = new JButton("Run Multiple Test");
-		m_multipleTestButton.addActionListener(this);
-
 		m_testGAButton = new JButton("Run GA");
 		m_testGAButton.addActionListener(this);
 
@@ -343,7 +359,6 @@ public class ImageSearch extends JFrame implements ActionListener {
 		buttonPanel.add(m_openButton);
 		buttonPanel.add(m_searchButton);
 		buttonPanel.add(m_testButton);
-		buttonPanel.add(m_multipleTestButton);
 		buttonPanel.add(m_testGAButton);
 
 		buttonPanel.add(m_colorHistogramCheckBox);
@@ -488,11 +503,7 @@ public class ImageSearch extends JFrame implements ActionListener {
 			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_testButton) {
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			runTestIR(false);
-			setCursor(Cursor.getDefaultCursor());
-		} else if (e.getSource() == m_multipleTestButton) {
-			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			runMultipleTests();
+			evaluateTestData();
 			setCursor(Cursor.getDefaultCursor());
 		} else if (e.getSource() == m_testGAButton) {
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -596,47 +607,15 @@ public class ImageSearch extends JFrame implements ActionListener {
 			}
 		}
 		return result;
-
 	}
 
-	private int m_weightColorHist = 1;
-	private int m_weightSemanticFeature = 9;
-	private int m_weightVisualConcept = 10;
-	private int m_weightSift = 1;
-	private int m_weightText = 5;
-	private double bestF1 = 0;
-	private int bestWeightColorHist = 1;
-	private int bestWeightSemanticFeature = 1;
-	private int bestWeightVisualConcept = 1;
-	private int bestWeightSift = 1;
-	private int bestWeightText = 1;
-	private int maxWeight = 10;
-
-
-
-	TreeMap<Pair, Double> m_colorHistScoreMap = new TreeMap<Pair, Double>();
-	TreeMap<Pair, Double> m_semanticFeatureScoreMap = new TreeMap<Pair, Double>();
-	TreeMap<Pair, Double> m_visualConceptScoreMap = new TreeMap<Pair, Double>();
-	TreeMap<Pair, Double> m_siftScoreMap = new TreeMap<Pair, Double>();
-	TreeMap<Pair, Double> m_textScoreMap = new TreeMap<Pair, Double>();
-
-	static String s_colorHistScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\ColorHist.txt";
-	static String s_semanticFeatureScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\SemanticFeature.txt";
-	static String s_visualConceptScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\VisualConcept.txt";
-	static String s_siftScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Sift.txt";
-	static String s_textScorePath = s_mainDatapath + "ImageData\\SimilarityTable\\Text.txt";
-
-	private double runTestIR(boolean isScoreFromFile) {
+	private double evaluateTestData() {
 		double totalF1 = 0.0;
 
 		for (Map.Entry<String, ImageFile> entry : m_imageTestMap.entrySet()) {
 			ImageFile currImageTest = entry.getValue();
 			TreeSet<ImageFile> result;
-			if (isScoreFromFile)
-				result = getRankFromScoreFile(currImageTest, m_weightColorHist, m_weightSemanticFeature,
-						m_weightVisualConcept, m_weightSift, m_weightText);
-			else
-				result = getRank(currImageTest);
+			result = getRank(currImageTest);
 
 			int numRetrieved = result.size();
 			int numRetrievedAndRelevant = 0;
@@ -667,61 +646,9 @@ public class ImageSearch extends JFrame implements ActionListener {
 
 		return meanF1;
 	}	
-	
-
-	void readScore(TreeMap<Pair, Double> scoreMap, String scoreFilePath) {
-		try {
-			scoreMap.clear();
-			Scanner cin = new Scanner(new File(scoreFilePath));
-			while (cin.hasNext()) {
-				String from = cin.next();
-				String to = cin.next();
-				Double score = cin.nextDouble();
-				Pair newPair = new Pair(from, to);
-				scoreMap.put(newPair, score);
-			}
-			cin.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void runMultipleTests() {
-		readScore(m_colorHistScoreMap, s_colorHistScorePath);
-		readScore(m_semanticFeatureScoreMap, s_semanticFeatureScorePath);
-		readScore(m_visualConceptScoreMap, s_visualConceptScorePath);
-		readScore(m_siftScoreMap, s_siftScorePath);
-		readScore(m_textScoreMap, s_textScorePath);
-
-		for (m_weightColorHist = 0; m_weightColorHist <= maxWeight; m_weightColorHist++) {
-			for (m_weightSemanticFeature = 9; m_weightSemanticFeature <= maxWeight; m_weightSemanticFeature++) {
-				for (m_weightVisualConcept = 10; m_weightVisualConcept <= maxWeight; m_weightVisualConcept++) {
-					for (m_weightSift = 0; m_weightSift <= maxWeight; m_weightSift++) {
-						for (m_weightText = 1; m_weightText <= maxWeight; m_weightText++) {
-							System.out.println(m_weightColorHist + "--" + m_weightSemanticFeature + "--"
-									+ m_weightVisualConcept + "--" + m_weightSift + "--" + m_weightText);
-							double currF1 = runTestIR(true);
-							if (currF1 > bestF1) {
-								bestF1 = currF1;
-								bestWeightColorHist = m_weightColorHist;
-								bestWeightSemanticFeature = m_weightSemanticFeature;
-								bestWeightVisualConcept = m_weightVisualConcept;
-								bestWeightSift = m_weightSift;
-								bestWeightText = m_weightText;
-								System.out.println("Current Best F1 : " + bestF1);
-								System.out.println(bestWeightColorHist + "--" + bestWeightSemanticFeature + "--"
-										+ bestWeightVisualConcept + "--" + bestWeightSift + "--" + bestWeightText);
-								System.out.println();
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 
 	// Unused
-	// Method only used to generate all possible similarity Matrix
+	// Method only used once to generate all possible similarity Matrix
 	public TreeSet<ImageFile> getRankWithOutput(ImageFile queryImage) {
 		// Reset all scores
 		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
@@ -783,37 +710,6 @@ public class ImageSearch extends JFrame implements ActionListener {
 			e.printStackTrace();
 		}
 
-		return result;
-	}
-
-	// Duplicated method to GeneticAlgorithm class, please be aware when changing this method
-	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage, double weightColorHist,
-			double weightSemanticFeature, double weightVisualConcept, double weightSift, double weightText) {
-		// Reset all scores
-		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
-			ImageFile currImage = entry.getValue();
-			currImage.resetScore();
-		}
-
-		TreeSet<ImageFile> result = new TreeSet<ImageFile>(new ImageFileScoreComparator());
-		/* ranking the search results */
-
-		for (Map.Entry<String, ImageFile> entry : m_imageMap.entrySet()) {
-			ImageFile currImage = entry.getValue();
-			Double colorHistScore = m_colorHistScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
-			Double semanticFeatureScore = m_semanticFeatureScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
-			Double visualConceptScore = m_visualConceptScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
-			Double siftScore = m_siftScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
-			Double textScore = m_textScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
-
-			currImage.m_score = weightColorHist * colorHistScore
-					+ weightSemanticFeature * semanticFeatureScore
-					+ weightVisualConcept * visualConceptScore + weightSift * siftScore
-					+ weightText * textScore;
-			result.add(currImage);
-			if (result.size() > s_resultSize)
-				result.pollLast();
-		}
 		return result;
 	}
 
