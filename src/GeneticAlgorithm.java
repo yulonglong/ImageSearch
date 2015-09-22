@@ -40,26 +40,25 @@ class GeneComparator implements Comparator<Gene> {
 public class GeneticAlgorithm {
 	TreeMap<String, ImageFile> m_imageMap;
 	TreeMap<String, ImageFile> m_imageTestMap;
-	
+
 	// For GA
 	private int bestNGenes = 5;
 	private double rangeMin = 0;
 	private double rangeMax = 1000;
 	private int maxGenerations = 1000000;
 	private double mutationChance = 0.25;
-	
+
 	TreeMap<Pair, Double> m_colorHistScoreMap = new TreeMap<Pair, Double>();
 	TreeMap<Pair, Double> m_semanticFeatureScoreMap = new TreeMap<Pair, Double>();
 	TreeMap<Pair, Double> m_visualConceptScoreMap = new TreeMap<Pair, Double>();
 	TreeMap<Pair, Double> m_siftScoreMap = new TreeMap<Pair, Double>();
 	TreeMap<Pair, Double> m_textScoreMap = new TreeMap<Pair, Double>();
-	
-	
+
 	GeneticAlgorithm(TreeMap<String, ImageFile> imageMap, TreeMap<String, ImageFile> imageTestMap) {
 		m_imageMap = imageMap;
 		m_imageTestMap = imageTestMap;
 	}
-	
+
 	public TreeSet<ImageFile> getRankFromScoreFile(ImageFile queryImage, double weightColorHist,
 			double weightSemanticFeature, double weightVisualConcept, double weightSift, double weightText) {
 		// Reset all scores
@@ -79,17 +78,15 @@ public class GeneticAlgorithm {
 			Double siftScore = m_siftScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
 			Double textScore = m_textScoreMap.get(new Pair(queryImage.m_name, currImage.m_name));
 
-			currImage.m_score = weightColorHist * colorHistScore
-					+ weightSemanticFeature * semanticFeatureScore
-					+ weightVisualConcept * visualConceptScore + weightSift * siftScore
-					+ weightText * textScore;
+			currImage.m_score = weightColorHist * colorHistScore + weightSemanticFeature * semanticFeatureScore
+					+ weightVisualConcept * visualConceptScore + weightSift * siftScore + weightText * textScore;
 			result.add(currImage);
 			if (result.size() > ImageSearch.s_resultSize)
 				result.pollLast();
 		}
 		return result;
 	}
-	
+
 	private double runTestGA(Gene gene) {
 		double totalF1 = 0.0;
 
@@ -126,7 +123,7 @@ public class GeneticAlgorithm {
 
 		return meanF1;
 	}
-	
+
 	public void generateRandomGenes(ArrayList<Gene> geneList) {
 		Random random = new Random();
 		for (int j = 0; j < bestNGenes; j++) {
@@ -207,7 +204,7 @@ public class GeneticAlgorithm {
 		}
 		tempGeneList.clear();
 	}
-	
+
 	void readScore(TreeMap<Pair, Double> scoreMap, String scoreFilePath) {
 		try {
 			scoreMap.clear();

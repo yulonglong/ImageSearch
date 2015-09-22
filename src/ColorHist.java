@@ -5,7 +5,7 @@ import java.util.*;
 class ColorHistThread implements Runnable {
 	ImageFile currImage;
 	double[] targetHist;
-	
+
 	public ColorHistThread(ImageFile _currImage, double[] _targetHist) {
 		currImage = _currImage;
 		targetHist = _targetHist;
@@ -14,12 +14,11 @@ class ColorHistThread implements Runnable {
 	@Override
 	public void run() {
 		double[] currHist = currImage.m_colorHistogram;
-		if (currHist == null) 
+		if (currHist == null)
 			currHist = ColorHist.getHist(currImage.m_bufferedImage);
 		currImage.m_colorHistScore += ColorHist.computeSimilarity(targetHist, currHist);
 	}
 }
-
 
 public class ColorHist {
 	private static int dim = 64;
@@ -32,18 +31,17 @@ public class ColorHist {
 		ArrayList<Thread> threadsList = new ArrayList<Thread>();
 		for (Map.Entry<String, ImageFile> entry : images.entrySet()) {
 			ImageFile currImage = entry.getValue();
-			
+
 			Runnable r = new ColorHistThread(currImage, targetHist);
 			Thread t = new Thread(r);
 			threadsList.add(t);
 			t.start();
 		}
 		try {
-			for(Thread t: threadsList) {
+			for (Thread t : threadsList) {
 				t.join();
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			System.out.println("Failed to join threads");
 			e.printStackTrace();
 		}
