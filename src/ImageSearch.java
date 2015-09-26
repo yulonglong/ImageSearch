@@ -85,11 +85,11 @@ public class ImageSearch extends JFrame implements ActionListener {
 	BufferedImage m_queryImage = null;
 	File m_queryFile;
 	
-	private int m_weightColorHist = 1;
-	private int m_weightSemanticFeature = 9;
-	private int m_weightVisualConcept = 10;
-	private int m_weightSift = 1;
-	private int m_weightText = 5;
+	private double m_weightColorHist = 25.705;
+	private double m_weightSemanticFeature = 883.938;
+	private double m_weightVisualConcept = 1000.90;
+	private double m_weightSift = 69.86;
+	private double m_weightText = 498.01;
 
 
 	private void loadTrainingData() {
